@@ -33,6 +33,70 @@ def get_ucode_set():
     ucode_set = set( lines )
     return ucode_set
 
+class Cand():
+    def __init__( self, buffer ):
+        self.list = []
+        self.list.append(None)
+        self.list.append(None)
+        self.list.append(None)
+        self.list.append(None)
+        self.list.append(None)
+        self.list.append(None)
+        self.page_index = 0
+        self.query_index = 0
+        self.buffer = buffer
+    def update(self):
+        i = len( self.buffer.buffer )
+        rs = self.buffer.query[i]
+        while rs == None and i > 0 :
+            i = i - 1
+            rs = self.buffer.query[i]
+        self.query_index = i
+        if rs:
+            if self.page_index * 6 >= len( rs ):
+                self.list[0] = None
+                self.list[1] = None
+                self.list[2] = None
+                self.list[3] = None
+                self.list[4] = None
+                self.list[5] = None
+            else:
+                for i in range(6):
+                    idx = self.page_index * 6 + i
+                    if idx < len(rs):
+                        self.list[i] = rs[ idx ]
+                    else:
+                        self.list[i] = None
+        else:
+            self.list[0] = None
+            self.list[1] = None
+            self.list[2] = None
+            self.list[3] = None
+            self.list[4] = None
+            self.list[5] = None
+    def next_page(self):
+        rs = self.buffer.query[self.query_index]
+        idx = self.page_index + 1
+        if idx * 6 >= len( rs ):
+            pass
+        else:
+            self.page_index = idx
+            self.update()
+    def prev_page(self):
+        idx = self.page_index - 1
+        if idx >= 0:
+            self.page_index = idx
+            self.update()
+    def reset(self):
+        #self.list[0] = None
+        #self.list[1] = None
+        #self.list[2] = None
+        #self.list[3] = None
+        #self.list[4] = None
+        #self.list[5] = None
+        self.page_index = 0
+        #self.query_index = 0
+
 class Buffer():
     code_set = get_code_set()
     ucode_set = get_ucode_set()
@@ -45,6 +109,7 @@ class Buffer():
         self.cur = self.conn.cursor()
         self.sql_qb = []
         self.query = []
+        self.cand = Cand(self)
         for i in range(65):
             self.query.append(None)
             s = "select pinyin,hanzi,freq from pc_" + str(i) + " where code=? order by freq desc"
@@ -60,6 +125,7 @@ class Buffer():
 
     def reset(self):
         self.buffer = ""
+        self.cand.reset()
     def search(self):
         t = ( self.buffer, )
         i = len( self.buffer )
@@ -71,4 +137,7 @@ class Buffer():
             self.query[i] = rl
         else:
             self.query[i] = None
+        #self.cand.update()
+        #for r in self.cand.list:
+            #print r
 
