@@ -1,6 +1,10 @@
 #-!- coding=utf-8 -!-
 
 import sqlite3
+import threading
+import Queue
+#import time
+
 code = []
 code.append("")
 code.append("")
@@ -32,6 +36,56 @@ def get_ucode_set():
         lines.append( line[:-1] )
     ucode_set = set( lines )
     return ucode_set
+
+#class Result():
+    #def __init__(self):
+        #self.is_vaild = False
+        #self.result_list = None
+
+class ConnThread( threading.Thread ):
+    def __init__( self, queue ):
+        threading.Thread.__init__(self)
+        self.conn = None
+        self.cur = None
+        self.queue = queue
+        self.sql_q = []
+        for i in range(65):
+            s = "select pinyin,hanzi,freq from pc_" + str(i) + " where code=? order by freq desc"
+            self.sql_q.append( s )
+    def run(self):
+        self.conn = sqlite3.connect( "data/main.db" )
+        self.cur = self.conn.cursor()
+        while(True):
+            data = self.queue.get()
+            print "get"
+            #print data
+            #data = [ buffer, self.query, i, self.frontend ]
+            code = data[0]
+            query = data[1]
+            i = len(code)
+            frontend = data[2]
+            t = ( code, )
+            print "start"
+            rs = self.cur.execute( self.sql_q[i], t )
+            rl = []
+            for r in rs :
+                #print r
+                rl.append(r)
+            if len(rl) > 0:
+                query[i] = rl
+            else:
+                query[i] = None
+            print "end"
+            frontend.request_update()
+
+class Conn():
+    def __init__(self):
+        self.queue = Queue.Queue()
+        self.thread = ConnThread( self.queue )
+        self.thread.setDaemon(True)
+        self.thread.start()
+    def query( self, data ):
+        self.queue.put(data)
 
 class Cand():
     def __init__( self, buffer ):
@@ -97,47 +151,43 @@ class Cand():
         self.page_index = 0
         #self.query_index = 0
 
-class Buffer():
+#class Block():
+    #def __init__
+
+class Backend():
     code_set = get_code_set()
     ucode_set = get_ucode_set()
 
     codes = set( ["2","3","4","5","6","7","8","9"] )
 
-    def __init__(self):
+    def __init__( self, frontend ):
+        self.c = Conn()
+        self.frontend = frontend
         self.buffer = ""
         self.conn = sqlite3.connect( "data/main.db" )
         self.cur = self.conn.cursor()
-        self.sql_qb = []
         self.query = []
         self.cand = Cand(self)
         for i in range(65):
             self.query.append(None)
-            s = "select pinyin,hanzi,freq from pc_" + str(i) + " where code=? order by freq desc"
-            self.sql_qb.append( s )
 
     def append( self, code ):
         if code in self.codes:
             self.buffer = self.buffer + code
+        self.cand.reset()
 
     def backspace(self):
         if len(self.buffer) > 0:
             self.buffer = self.buffer[:-1]
+        self.cand.reset()
 
     def reset(self):
         self.buffer = ""
         self.cand.reset()
     def search(self):
-        t = ( self.buffer, )
         i = len( self.buffer )
-        rs = self.cur.execute( self.sql_qb[i], t )
-        rl = []
-        for r in rs :
-            rl.append(r)
-        if len(rl) > 0:
-            self.query[i] = rl
-        else:
-            self.query[i] = None
-        #self.cand.update()
-        #for r in self.cand.list:
-            #print r
+        data = [ self.buffer, self.query, self.frontend ]
+        print "enter"
+        self.c.query(data)
+        print "return"
 
