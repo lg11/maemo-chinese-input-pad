@@ -12,8 +12,16 @@ if __name__ == "__main__":
     phrase_list = []
     for i in range(65):
         p_name = "pc_" + str(i)
+        user_p_name = "upc_" + str(i)
+        user_cache_p_name = "upc_cache_" + str(i)
         phrase_list.append( p_name )
-        sqls = "create table " + p_name + " ( code char(" + str(i) + "), pinyin varchar(128), hanzi varchar(64), freq int )"
+        sqls = "create table " + p_name + " ( id integer primary key, code char(" + str(i) + "), pinyin varchar(128), hanzi varchar(64), freq int )"
+        print sqls
+        cur.execute( sqls )
+        sqls = "create table " + user_p_name + " ( id integer primary key, code char(" + str(i) + "), pinyin varchar(128), hanzi varchar(64), freq int )"
+        print sqls
+        cur.execute( sqls )
+        sqls = "create table " + user_cache_p_name + " ( id integer primary key, code char(" + str(i) + "), pinyin varchar(128), hanzi varchar(64), freq int )"
         print sqls
         cur.execute( sqls )
     
@@ -23,7 +31,7 @@ if __name__ == "__main__":
         i = len(strs[0])
         if i < 65:
             p_name = "pc_" + str(i)
-            sqls = "insert into " + p_name + " ( code, pinyin, hanzi, freq ) values ( '" + strs[0] + "', \"" + strs[2] + "\", '" + strs[3] + "', " + strs[4] + ")"
+            sqls = "insert into " + p_name + " ( id, code, pinyin, hanzi, freq ) values ( NULL, '" + strs[0] + "', \"" + strs[2] + "\", '" + strs[3] + "', " + strs[4] + ")"
             print sqls
             cur.execute( sqls )
     conn.commit()

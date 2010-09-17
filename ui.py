@@ -3,99 +3,58 @@
 import gtk
 import gobject
 import pango
-import backend
+from backend import Backend
+from ui_base import LabelButton
 
-#class Dis( gtk.Label )
 
-def buffer_append( widget, ipad, data ):
-    ipad.backend.append( data )
-    ipad.backend.search()
-    ipad.update()
-            
-def buffer_backspace( widget, ipad ):
-    ipad.backend.backspace()
-    ipad.update()
+
 
 def cb_backspace( widget, ipad ):
-    if len( ipad.backend.buffer ) > 0:
+    if len( ipad.backend.code ) > 0:
         if ipad.mode == 1:
             ipad.mode = 0
-        buffer_backspace( widget, ipad )
-        #ipad.pad.cand_page_index = 0
+        ipad.backend.backspace_code()
+        ipad.update()
     else:
-        pass
-        #text = ipad.l_text.get_text()
-        #if len(text) > 0:
-            #text = text.decode('utf8')
-            #text = text[:-1]
-            #ipad.l_text.set_text(text)
-
-def cb_quit( widget ):
-    gtk.main_quit()
-
-def select_cand( ipad, i ):
-    #ipad.l_text.set_text( ipad.l_text.get_text() + ipad.pad.cand_button[i].label.get_text() )
-    ipad.mode = 0
-    ipad.backend.reset()
-    for i in range(6):
-        ipad.npad.cand_button[i].label.set_text( ipad.npad.cand_button_label[i] )
-    ipad.l_pinyin.set_text("")
-    ipad.l_hanzi.set_text("")
-
-def next_cand(ipad):
-    ipad.backend.cand.next_page()
-    ipad.pad.update()
-
-def prev_cand(ipad):
-    ipad.backend.cand.prev_page()
-    ipad.pad.update()
+        #pass
+        text = ipad.text_label.get_text()
+        if len(text) > 0:
+            text = text.decode('utf8')
+            text = text[:-1]
+            ipad.text_label.set_text(text)
 
 def cb_pad_click( widget, ipad, data ):
     if ipad.mode == 0:
         if data == "1":
             ipad.mode = 1
         else:
-            buffer_append( widget, ipad, data )
-            #ipad.pad.cand_page_index = 0
+            ipad.backend.append_code( data )
+            ipad.update()
     elif ipad.mode == 1:
-        if data == "8":
-            ipad.mode = 0
+        if data == "1":
+            ipad.select( 0 )
+        elif data == "2":
+            ipad.select( 1 )
+        elif data == "3":
+            ipad.select( 2 )
+        elif data == "4":
+            ipad.select( 3 )
+        elif data == "5":
+            ipad.select( 4 )
+        elif data == "6":
+            ipad.select( 5 )
+        elif data == "9":
+            ipad.backend.cand.next_page()
+            ipad.update_ui()
+        elif data == "7":
+            ipad.backend.cand.prev_page()
+            ipad.update_ui()
+        elif data == "8":
+            ipad.commit()
         else:
-            if data == "1":
-                select_cand( ipad, 0 )
-            elif data == "2":
-                select_cand( ipad, 1 )
-            elif data == "3":
-                select_cand( ipad, 2 )
-            elif data == "4":
-                select_cand( ipad, 3 )
-            elif data == "5":
-                select_cand( ipad, 4 )
-            elif data == "6":
-                select_cand( ipad, 5 )
-            elif data == "9":
-                next_cand( ipad )
-            elif data == "7":
-                prev_cand( ipad )
-            else:
-                pass
+            pass
     else:
         pass
-
-def cb_copy( widget, ipad ):
-    ipad.clipboard.set_text( ipad.l_text.get_text() )
-
-class LabelButton( gtk.Button ):
-    def __init__( self, label ):
-        gtk.Button.__init__(self)
-        self.label = gtk.Label()
-        self.label.get_layout().set_wrap(pango.WRAP_CHAR)
-        #print self.label.get_layout().get_wrap()
-        self.label.set_line_wrap(True)
-        self.label.set_width_chars(10)
-        self.label.set_text(label)
-        self.label.show()
-        self.add(self.label)
 
 class NumPad( gtk.Frame ):
     def __init__( self, ipad ):
@@ -134,14 +93,14 @@ class NumPad( gtk.Frame ):
         cand = self.ipad.backend.cand
         for i in range(6):
             if cand.list[i]:
-                self.cand_button[i].label.set_text( cand.list[i][1] )
+                self.cand_button[i].label.set_text( cand.list[i][3] )
             else:
                 self.cand_button[i].label.set_text( self.cand_button_label[i] )
         
 class ChineseInputPad( gtk.Frame ):
-    def __init__(self):
+    def __init__( self, text_label ):
         gtk.Frame.__init__(self)
-        self.backend = backend.Backend(self)
+        self.backend = Backend(self)
         self.layout = gtk.Fixed()
         self.npad = NumPad( self )
         self.add(self.layout)
@@ -166,39 +125,60 @@ class ChineseInputPad( gtk.Frame ):
 
         self.mode = 0
 
+        self.text_label = text_label
+    def update_ui(self):
+        cand = self.backend.cand
+        if cand.list[0]:
+            py = cand.list[0][2] + "'" + self.backend.code[cand.query_index:]
+            hz = cand.list[0][3] + "'" + self.backend.code[cand.query_index:]
+            self.l_pinyin.set_text(py)
+            self.l_hanzi.set_text(hz)
+        else:
+            self.l_pinyin.set_text(self.backend.code)
+            self.l_hanzi.set_text(self.backend.code)
+        self.npad.update()
     def update(self):
         print "update"
         cand = self.backend.cand
         cand.reset()
         cand.update()
-        if cand.list[0]:
-            py = cand.list[0][0] + "'" + self.backend.buffer[cand.query_index:]
-            hz = cand.list[0][1] + "'" + self.backend.buffer[cand.query_index:]
-            self.l_pinyin.set_text(py)
-            self.l_hanzi.set_text(hz)
-        else:
-            self.l_pinyin.set_text(self.backend.buffer)
-            self.l_hanzi.set_text(self.backend.buffer)
+        self.update_ui()
         self.npad.update()
-
     def request_update(self):
         print "request"
         gobject.idle_add( self.update )
+    def select( self, i ):
+        self.backend.cand.select(i)
+        if len( self.backend.code ) < 1:
+            self.commit()
+    def commit(self):
+        print "commit"
+        text = ""
+        print self.text_label.get_text()
+        for item in self.backend.selected:
+            text = text + item[3]
+        self.text_label.set_text( self.text_label.get_text() + text )
+        #self.text_label.set_text( "text" )
+        self.backend.reset()
+        self.mode = 0
+        self.update()
+
+def cb_quit( widget ):
+    gtk.main_quit()
+
+
+def cb_copy( widget, ipad ):
+    ipad.clipboard.set_text( ipad.l_text.get_text() )
 
 class InputPad( gtk.Frame ):
     def __init__(self):
         gtk.Frame.__init__(self)
         self.layout = gtk.Fixed()
-        self.cipad = ChineseInputPad()
-        self.layout.put(self.cipad,330,0)
-        self.add(self.layout)
-        
-        #self.l_code = gtk.Label()
-        #self.l_code.set_size_request(320,75)
-        #self.layout.put( self.l_code, 340, 360 )
-        #self.l_code.show()
-
         self.l_text = gtk.Label()
+        self.ipad = ChineseInputPad(self.l_text)
+        self.layout.put(self.ipad,330,0)
+        self.add(self.layout)
+
         self.l_text.set_size_request(320,240)
         self.l_text.get_layout().set_wrap(pango.WRAP_CHAR)
         self.l_text.set_line_wrap(True)
@@ -213,16 +193,13 @@ class InputPad( gtk.Frame ):
         self.cp_b.show()
         self.cp_b.connect( "clicked", cb_copy, self )
 
-        self.cipad.show()
+        self.ipad.show()
         self.layout.show()
-        #self.win.show()
-        #self.win.connect( "destroy", cb_quit )
 
         self.clipboard = gtk.clipboard_get(gtk.gdk.SELECTION_CLIPBOARD)
 
 class App():
     def __init__(self):
-        gtk.gdk.threads_init()
         self.win = gtk.Window()
         self.ipad = InputPad()
         self.win.add(self.ipad)
@@ -230,9 +207,10 @@ class App():
         self.win.show()
         self.win.connect( "destroy", cb_quit )
     def run(self):
-        gtk.gdk.threads_enter()
+        gtk.gdk.threads_init()
+        #gtk.gdk.threads_enter()
         gtk.main()
-        gtk.gdk.threads_leave()
+        #gtk.gdk.threads_leave()
 
 
 if __name__ == "__main__":

@@ -3,92 +3,124 @@
 import sqlite3
 import threading
 import Queue
-#import time
 
-code = []
-code.append("")
-code.append("")
-code.append("abc")
-code.append("def")
-code.append("ghi")
-code.append("jkl")
-code.append("mno")
-code.append("pqrs")
-code.append("tuv")
-code.append("wxyz")
+class QueryCache():
+    """
+    查询缓存
+    """
+    FLAG_INVAILD = 0
+    FLAG_IN_QUERY = 1
+    FLAG_VAILD = 2
+    IDX_ID = 0
+    IDX_CODE = 1
+    IDX_PINYIN = 2
+    IDX_HANZI = 3
+    IDX_FREQ = 4
+    def __init__(self):
+        """
+        初始化
+        @cache 缓存列表
+        @flag 标志
+        """
+        self.list = []
+        self.flag = [] 
+        for i in range(65):
+            self.list.append(None)
+            self.flag.append(self.FLAG_INVAILD)
+    def reset(self):
+        """
+        重置整个缓存
+        """
+        for i in range(65):
+            self.flag[i] = self.FLAG_INVAILD
 
-def get_code_set():
-    """获取编码集合"""
-    file = open( "data/code" )
-    buffer = file.readlines()
-    lines = []
-    for line in buffer:
-        lines.append( line[:-1] )
-    code_set = set( lines )
-    return code_set
-
-def get_ucode_set():
-    """获取不完整编码集合"""
-    file = open( "data/code_un" )
-    buffer = file.readlines()
-    lines = []
-    for line in buffer:
-        lines.append( line[:-1] )
-    ucode_set = set( lines )
-    return ucode_set
-
-#class Result():
-    #def __init__(self):
-        #self.is_vaild = False
-        #self.result_list = None
-
-class ConnThread( threading.Thread ):
+class QueryThread( threading.Thread ):
+    """
+    sqlite查询线程。用来脱离主线程执行词库查询。
+    """
     def __init__( self, queue ):
+        """
+        @queue Queue队列，用来和主线程交换数据。
+        数据格式为:
+        data = [ code, self.cache, self.frontend ]
+        @code 需要查询的code字符串。
+        @cache 保存查询结果的缓存列表。
+        @frontend 输入面板前端，调用该前端的request_update方法进行刷新。
+        """
         threading.Thread.__init__(self)
         self.conn = None
         self.cur = None
         self.queue = queue
         self.sql_q = []
         for i in range(65):
-            s = "select pinyin,hanzi,freq from pc_" + str(i) + " where code=? order by freq desc"
+            s = "select * from pc_" + str(i) + " where code=? order by freq desc"
             self.sql_q.append( s )
     def run(self):
+        """
+        线程实际运行时，执行的函数。由于sqlite的连接不能跨线程，所以在这里打开连接。
+        """
         self.conn = sqlite3.connect( "data/main.db" )
         self.cur = self.conn.cursor()
         while(True):
             data = self.queue.get()
-            print "get"
-            #print data
-            #data = [ buffer, self.query, i, self.frontend ]
             code = data[0]
-            query = data[1]
-            i = len(code)
+            cache = data[1]
             frontend = data[2]
+            i = len(code)
             t = ( code, )
-            print "start"
+            cache.flag[i] = QueryCache.FLAG_IN_QUERY
+            print "start code = " + code
             rs = self.cur.execute( self.sql_q[i], t )
             rl = []
             for r in rs :
-                #print r
                 rl.append(r)
             if len(rl) > 0:
-                query[i] = rl
+                cache.list[i] = rl
             else:
-                query[i] = None
+                cache.list[i] = None
+            cache.flag[i] = QueryCache.FLAG_VAILD
             print "end"
             frontend.request_update()
 
 class Conn():
+    """
+    sqlite连接类
+    """
     def __init__(self):
+        """
+        初始化
+        @queue 和查询线程交换数据用的队列
+        @qthread 查询线程
+        """
         self.queue = Queue.Queue()
-        self.thread = ConnThread( self.queue )
-        self.thread.setDaemon(True)
-        self.thread.start()
+        self.qthread = QueryThread( self.queue )
+        self.qthread.setDaemon(True) #让子线程在主线程退出后随之退出。
+        self.qthread.start()
     def query( self, data ):
+        """
+        查询，调用queue的put方法，向查询线程提交数据。
+        数据格式为:
+        @data = [ code, self.query, self.frontend ]
+        @code 需要查询的code字符串。
+        @query_cache 保存查询结果的缓存列表。
+        @query_cache_flag 保存查询结果的缓存列表flag。
+        @frontend 输入面板前端，调用该前端的request_update方法进行刷新。
+        """
         self.queue.put(data)
 
 class Cand():
-    def __init__( self, buffer ):
+    """
+    候选词列表类
+    """
+    def __init__( self, backend ):
+        """
+        @backend 输入法后端
+        内部变量：
+        @list 候选词列表
+        @page_index 页码
+        @query_index 查询缓存的索引
+        @backend 输入法后端
+        """
         self.list = []
         self.list.append(None)
         self.list.append(None)
@@ -98,29 +130,33 @@ class Cand():
         self.list.append(None)
         self.page_index = 0
         self.query_index = 0
-        self.buffer = buffer
+        self.backend = backend
+    def update_list(self):
+        rs = self.backend.cache.list[self.query_index]
+        if self.page_index * 6 >= len( rs ):
+            self.list[0] = None
+            self.list[1] = None
+            self.list[2] = None
+            self.list[3] = None
+            self.list[4] = None
+            self.list[5] = None
+        else:
+            for i in range(6):
+                idx = self.page_index * 6 + i
+                if idx < len(rs):
+                    #print rs[idx][1]
+                    self.list[i] = rs[ idx ]
+                else:
+                    self.list[i] = None
     def update(self):
-        i = len( self.buffer.buffer )
-        rs = self.buffer.query[i]
+        i = len( self.backend.code )
+        rs = self.backend.cache.list[i]
         while rs == None and i > 0 :
             i = i - 1
-            rs = self.buffer.query[i]
+            rs = self.backend.cache.list[i]
         self.query_index = i
         if rs:
-            if self.page_index * 6 >= len( rs ):
-                self.list[0] = None
-                self.list[1] = None
-                self.list[2] = None
-                self.list[3] = None
-                self.list[4] = None
-                self.list[5] = None
-            else:
-                for i in range(6):
-                    idx = self.page_index * 6 + i
-                    if idx < len(rs):
-                        self.list[i] = rs[ idx ]
-                    else:
-                        self.list[i] = None
+            self.update_list()
         else:
             self.list[0] = None
             self.list[1] = None
@@ -129,65 +165,81 @@ class Cand():
             self.list[4] = None
             self.list[5] = None
     def next_page(self):
-        rs = self.buffer.query[self.query_index]
+        rs = self.backend.cache.list[self.query_index]
         idx = self.page_index + 1
         if idx * 6 >= len( rs ):
             pass
         else:
             self.page_index = idx
-            self.update()
+            self.update_list()
     def prev_page(self):
         idx = self.page_index - 1
         if idx >= 0:
             self.page_index = idx
-            self.update()
+            self.update_list()
     def reset(self):
-        #self.list[0] = None
-        #self.list[1] = None
-        #self.list[2] = None
-        #self.list[3] = None
-        #self.list[4] = None
-        #self.list[5] = None
         self.page_index = 0
-        #self.query_index = 0
-
-#class Block():
-    #def __init__
+    def select( self, index ):
+        print self.query_index
+        print self.list[index][0]
+        print self.list[index][1]
+        print self.backend.code[self.query_index:]
+        self.backend.selected.append( self.list[index] )
+        self.backend.code = self.backend.code[self.query_index:]
+        self.backend.cache.reset()
+        self.backend.search()
 
 class Backend():
-    code_set = get_code_set()
-    ucode_set = get_ucode_set()
-
+    """
+    输入法后端，脏活累活全归它还见不得光的无名狗熊
+    """
     codes = set( ["2","3","4","5","6","7","8","9"] )
 
     def __init__( self, frontend ):
-        self.c = Conn()
+        """
+        初始化。
+        @conn sqlite连接
+        @frontend 输入法前端
+        @code 输入的数字code
+        @selected_phrase 已经选择好的词列表
+        @cache 查询结果缓冲
+        @cand 候选字列表
+        """
+        self.conn = Conn()
         self.frontend = frontend
-        self.buffer = ""
-        self.conn = sqlite3.connect( "data/main.db" )
-        self.cur = self.conn.cursor()
-        self.query = []
+        self.code = ""
+        self.selected = []
+        self.cache = QueryCache()
         self.cand = Cand(self)
-        for i in range(65):
-            self.query.append(None)
 
-    def append( self, code ):
+    def append_code( self, code ):
         if code in self.codes:
-            self.buffer = self.buffer + code
+            self.code = self.code + code
         self.cand.reset()
+        self.search()
 
-    def backspace(self):
-        if len(self.buffer) > 0:
-            self.buffer = self.buffer[:-1]
+    def backspace_code(self):
+        i = len(self.code)
+        if i > 0:
+            self.cache.flag[i] = 0
+            self.code = self.code[:-1]
         self.cand.reset()
 
     def reset(self):
-        self.buffer = ""
+        self.code = ""
         self.cand.reset()
+        self.cache.reset()
+        self.selected = []
+
     def search(self):
-        i = len( self.buffer )
-        data = [ self.buffer, self.query, self.frontend ]
-        print "enter"
-        self.c.query(data)
-        print "return"
+        code_len = len( self.code )
+        print "serch enter"
+        if code_len > 0:
+            for i in range(1,code_len+1):
+                print i
+                if self.cache.flag[i] != 1 and  self.cache.flag[i] != 2:
+                    data = [ self.code[:i], self.cache, self.frontend ]
+                    print "enter"
+                    self.conn.query(data)
+                    print "return"
 
