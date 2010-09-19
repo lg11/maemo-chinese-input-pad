@@ -185,9 +185,8 @@ class Cand():
         else:
             self.page_index = idx
     def prev_page(self):
-        idx = self.page_index - 1
-        if idx >= 0:
-            self.page_index = idx
+        if self.page_index > 0:
+            self.page_index = self.page_index - 1
     def reset_page(self):
         self.page_index = 0
     def reset(self):

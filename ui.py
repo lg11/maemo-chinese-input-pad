@@ -11,6 +11,7 @@ def cb_backspace( widget, ipad ):
         if ipad.mode == 1:
             #print "shorter"
             ipad.backend.cand.shorter()
+            ipad.backend.cand.reset_page()
             #print ipad.backend.cand.query_index
             if ipad.backend.cand.query_index < 1:
                 ipad.mode = 0
@@ -19,6 +20,7 @@ def cb_backspace( widget, ipad ):
         elif ipad.mode == 0:
             ipad.backend.backspace_code()
             ipad.backend.cand.longest()
+            ipad.backend.cand.reset_page()
             ipad.backend.cand.update()
         ipad.update()
     else:
@@ -55,9 +57,11 @@ def cb_pad_click( widget, ipad, data ):
             ipad.select( 5 )
         elif data == "9":
             ipad.backend.cand.next_page()
+            ipad.backend.cand.update()
             ipad.update()
         elif data == "7":
             ipad.backend.cand.prev_page()
+            ipad.backend.cand.update()
             ipad.update()
         elif data == "8":
             ipad.commit()
