@@ -69,7 +69,7 @@ class QueryThread( threading.Thread ):
             i = len(code)
             t = ( code, )
             cache.flag[i] = QueryCache.FLAG_IN_QUERY
-            print "start code = " + code
+            #print "start code = " + code
             rs = self.cur.execute( self.sql_q[i], t )
             rl = []
             for r in rs :
@@ -79,7 +79,7 @@ class QueryThread( threading.Thread ):
             else:
                 cache.list[i] = None
             cache.flag[i] = QueryCache.FLAG_VAILD
-            print "end"
+            #print "end"
             frontend.request_update()
 
 class Conn():
@@ -131,39 +131,52 @@ class Cand():
         self.page_index = 0
         self.query_index = 0
         self.backend = backend
-    def update_list(self):
+    def update(self):
         rs = self.backend.cache.list[self.query_index]
-        if self.page_index * 6 >= len( rs ):
+        if rs:
+            if self.page_index * 6 >= len( rs ):
+                self.list[0] = None
+                self.list[1] = None
+                self.list[2] = None
+                self.list[3] = None
+                self.list[4] = None
+                self.list[5] = None
+            else:
+                for i in range(6):
+                    idx = self.page_index * 6 + i
+                    if idx < len(rs):
+                        #print rs[idx][1]
+                        self.list[i] = rs[ idx ]
+                    else:
+                        self.list[i] = None
+        else:
             self.list[0] = None
             self.list[1] = None
             self.list[2] = None
             self.list[3] = None
             self.list[4] = None
             self.list[5] = None
-        else:
-            for i in range(6):
-                idx = self.page_index * 6 + i
-                if idx < len(rs):
-                    #print rs[idx][1]
-                    self.list[i] = rs[ idx ]
+    def shorter(self):
+        #print "shorter"
+        if self.query_index > 0 :
+            i = self.query_index - 1
+            rs = self.backend.cache.list[i]
+            flag = True
+            while flag and rs == None:
+                #print i
+                if i == 0:
+                    flag = False
                 else:
-                    self.list[i] = None
-    def update(self):
+                    i = i - 1
+                    rs = self.backend.cache.list[i]
+            self.query_index = i
+    def longest(self):
         i = len( self.backend.code )
         rs = self.backend.cache.list[i]
         while rs == None and i > 0 :
             i = i - 1
             rs = self.backend.cache.list[i]
         self.query_index = i
-        if rs:
-            self.update_list()
-        else:
-            self.list[0] = None
-            self.list[1] = None
-            self.list[2] = None
-            self.list[3] = None
-            self.list[4] = None
-            self.list[5] = None
     def next_page(self):
         rs = self.backend.cache.list[self.query_index]
         idx = self.page_index + 1
@@ -171,19 +184,21 @@ class Cand():
             pass
         else:
             self.page_index = idx
-            self.update_list()
     def prev_page(self):
         idx = self.page_index - 1
         if idx >= 0:
             self.page_index = idx
-            self.update_list()
+    def reset_page(self):
+        self.page_index = 0
     def reset(self):
         self.page_index = 0
+        self.list[0] = None
+        self.list[1] = None
+        self.list[2] = None
+        self.list[3] = None
+        self.list[4] = None
+        self.list[5] = None
     def select( self, index ):
-        print self.query_index
-        print self.list[index][0]
-        print self.list[index][1]
-        print self.backend.code[self.query_index:]
         self.backend.selected.append( self.list[index] )
         self.backend.code = self.backend.code[self.query_index:]
         self.backend.cache.reset()
@@ -215,7 +230,7 @@ class Backend():
     def append_code( self, code ):
         if code in self.codes:
             self.code = self.code + code
-        self.cand.reset()
+        #self.cand.reset()
         self.search()
 
     def backspace_code(self):
@@ -223,23 +238,23 @@ class Backend():
         if i > 0:
             self.cache.flag[i] = 0
             self.code = self.code[:-1]
-        self.cand.reset()
+        #self.cand.longest()
 
     def reset(self):
         self.code = ""
+        self.selected = []
         self.cand.reset()
         self.cache.reset()
-        self.selected = []
 
     def search(self):
         code_len = len( self.code )
-        print "serch enter"
+        #print "serch enter"
         if code_len > 0:
             for i in range(1,code_len+1):
-                print i
+                #print i
                 if self.cache.flag[i] != 1 and  self.cache.flag[i] != 2:
                     data = [ self.code[:i], self.cache, self.frontend ]
-                    print "enter"
+                    #print "enter"
                     self.conn.query(data)
-                    print "return"
+                    #print "return"
 

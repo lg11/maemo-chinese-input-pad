@@ -3,20 +3,25 @@
 import gtk
 import gobject
 import pango
-from backend import Backend
+from backend import Backend, QueryCache
 from ui_base import LabelButton
-
-
-
 
 def cb_backspace( widget, ipad ):
     if len( ipad.backend.code ) > 0:
         if ipad.mode == 1:
-            ipad.mode = 0
-        ipad.backend.backspace_code()
+            #print "shorter"
+            ipad.backend.cand.shorter()
+            #print ipad.backend.cand.query_index
+            if ipad.backend.cand.query_index < 1:
+                ipad.mode = 0
+                ipad.backend.cand.longest()
+            ipad.backend.cand.update()
+        elif ipad.mode == 0:
+            ipad.backend.backspace_code()
+            ipad.backend.cand.longest()
+            ipad.backend.cand.update()
         ipad.update()
     else:
-        #pass
         text = ipad.text_label.get_text()
         if len(text) > 0:
             text = text.decode('utf8')
@@ -27,6 +32,7 @@ def cb_pad_click( widget, ipad, data ):
     if ipad.mode == 0:
         if data == "1":
             ipad.mode = 1
+            ipad.update()
         else:
             ipad.backend.append_code( data )
             ipad.update()
@@ -45,10 +51,10 @@ def cb_pad_click( widget, ipad, data ):
             ipad.select( 5 )
         elif data == "9":
             ipad.backend.cand.next_page()
-            ipad.update_ui()
+            ipad.update()
         elif data == "7":
             ipad.backend.cand.prev_page()
-            ipad.update_ui()
+            ipad.update()
         elif data == "8":
             ipad.commit()
         else:
@@ -57,45 +63,35 @@ def cb_pad_click( widget, ipad, data ):
         pass
 
 class NumPad( gtk.Frame ):
+    button_label = [ \
+            ["1","2","3","4","5","6","7","8","9"]\
+            ,\
+            ["1","2","3","4","5","6","7","8","9"]\
+            ]
     def __init__( self, ipad ):
         gtk.Frame.__init__(self)
         self.ipad = ipad
-        #self.set_size_request( 375, 270 )
-        self.button_list = []
+        self.button = []
         t = gtk.Table( 3, 3 )
         t.set_row_spacings(0)
         t.set_col_spacings(0)
         self.add(t)
         for i in range(3):
             for j in range(3):
-                b = LabelButton( str(i*3+j+1) )
+                b = LabelButton(self.button_label[0][i*3+j])
                 b.set_size_request(145,110)
-                b.connect( "clicked", cb_pad_click, ipad, str(i*3+j+1) )
+                b.connect( "clicked", cb_pad_click, ipad, self.button_label[0][i*3+j] )
                 t.attach( b, j, j+1, i, i+1 )
                 b.show()
-                self.button_list.append(b)
+                self.button.append(b)
         t.show()
-        self.cand_button = []
-        self.cand_button.append( self.button_list[0] )
-        self.cand_button.append( self.button_list[1] )
-        self.cand_button.append( self.button_list[2] )
-        self.cand_button.append( self.button_list[3] )
-        self.cand_button.append( self.button_list[4] )
-        self.cand_button.append( self.button_list[5] )
-        self.cand_button_label = []
-        self.cand_button_label.append( "1" )
-        self.cand_button_label.append( "2" )
-        self.cand_button_label.append( "3" )
-        self.cand_button_label.append( "4" )
-        self.cand_button_label.append( "5" )
-        self.cand_button_label.append( "6" )
     def update(self):
         cand = self.ipad.backend.cand
         for i in range(6):
             if cand.list[i]:
-                self.cand_button[i].label.set_text( cand.list[i][3] )
+                self.button[i].label.set_text( cand.list[i][3] )
             else:
-                self.cand_button[i].label.set_text( self.cand_button_label[i] )
+                self.button[i].label.set_text( self.button_label[0][i] )
         
 class ChineseInputPad( gtk.Frame ):
     def __init__( self, text_label ):
@@ -104,57 +100,72 @@ class ChineseInputPad( gtk.Frame ):
         self.layout = gtk.Fixed()
         self.npad = NumPad( self )
         self.add(self.layout)
+        #self.layout.put(self.npad,0,90)
         self.layout.put(self.npad,0,90)
         self.npad.show()
         self.layout.show()
 
         self.l_hanzi = gtk.Label()
         self.l_pinyin = gtk.Label()
-        self.l_hanzi.set_size_request(320,50)
-        self.l_pinyin.set_size_request(320,50)
+        self.l_hanzi.set_size_request(290,50)
+        self.l_pinyin.set_size_request(290,50)
         self.layout.put( self.l_pinyin, 0, 5 )
         self.layout.put( self.l_hanzi, 0, 40 )
+        self.l_hanzi.set_selectable(True)
+        self.l_pinyin.set_selectable(True)
         self.l_pinyin.show()
         self.l_hanzi.show()
 
         self.bc_b = gtk.Button("退格")
-        self.bc_b.set_size_request( 135, 75 )
-        self.layout.put( self.bc_b, 320, 10 )
+        self.bc_b.set_size_request( 145, 75 )
+        self.layout.put( self.bc_b, 290, 10 )
         self.bc_b.show()
         self.bc_b.connect( "clicked", cb_backspace, self )
 
         self.mode = 0
 
         self.text_label = text_label
-    def update_ui(self):
+    def update(self):
         cand = self.backend.cand
         if cand.list[0]:
-            py = cand.list[0][2] + "'" + self.backend.code[cand.query_index:]
-            hz = cand.list[0][3] + "'" + self.backend.code[cand.query_index:]
-            self.l_pinyin.set_text(py)
-            self.l_hanzi.set_text(hz)
+            if self.mode == 0:
+                py = cand.list[0][2] + "'" + self.backend.code[cand.query_index:]
+                hz = cand.list[0][3] + "'" + self.backend.code[cand.query_index:]
+                self.l_pinyin.set_text(py)
+                self.l_hanzi.set_text(hz)
+            elif self.mode == 1:
+                selected_text = ""
+                for item in self.backend.selected:
+                    selected_text = selected_text + item[QueryCache.IDX_HANZI]
+                cand_hz = cand.list[0][QueryCache.IDX_HANZI]
+                cand_py = cand.list[0][QueryCache.IDX_PINYIN]
+                py = selected_text + cand_py + self.backend.code[cand.query_index:]
+                hz = selected_text + cand_hz + self.backend.code[cand.query_index:]
+                self.l_pinyin.set_text(py)
+                self.l_hanzi.set_text(hz)
+                self.l_hanzi.select_region(len(selected_text),len(selected_text)+len(cand_hz))
         else:
             self.l_pinyin.set_text(self.backend.code)
             self.l_hanzi.set_text(self.backend.code)
         self.npad.update()
-    def update(self):
-        print "update"
+    def cand_update(self):
+        #print "cand update"
         cand = self.backend.cand
-        cand.reset()
+        cand.longest()
+        cand.reset_page()
         cand.update()
-        self.update_ui()
-        self.npad.update()
+        self.update()
     def request_update(self):
-        print "request"
-        gobject.idle_add( self.update )
+        #print "request"
+        gobject.idle_add( self.cand_update )
     def select( self, i ):
         self.backend.cand.select(i)
         if len( self.backend.code ) < 1:
             self.commit()
     def commit(self):
-        print "commit"
+        #print "commit"
         text = ""
-        print self.text_label.get_text()
+        #print self.text_label.get_text()
         for item in self.backend.selected:
             text = text + item[3]
         self.text_label.set_text( self.text_label.get_text() + text )
@@ -165,7 +176,6 @@ class ChineseInputPad( gtk.Frame ):
 
 def cb_quit( widget ):
     gtk.main_quit()
-
 
 def cb_copy( widget, ipad ):
     ipad.clipboard.set_text( ipad.l_text.get_text() )
@@ -186,6 +196,11 @@ class InputPad( gtk.Frame ):
         self.l_text.set_text("")
         self.l_text.show()
         self.layout.put( self.l_text, 10, 10 )
+
+        l_empty = gtk.Label()
+        self.layout.put( l_empty, 0, 0 )
+        l_empty.show()
+        l_empty.set_selectable(True)
 
         self.cp_b = gtk.Button("复制到剪切板")
         self.cp_b.set_size_request( 200, 90 )
