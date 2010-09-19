@@ -25,7 +25,11 @@ def cb_backspace( widget, ipad ):
         ipad.backend.cand.reset_page()
         #print ipad.backend.cand.query_index
         if ipad.backend.cand.query_index < 1:
-            ipad.mode = 0
+            if ipad.backend.cand.cancel_select():
+                ipad.backend.cache.reset()
+                ipad.backend.search()
+            else:
+                ipad.mode = ipad.MODE_INPUT
             ipad.backend.cand.longest()
         ipad.backend.cand.update()
     elif ipad.mode == ipad.MODE_PUNC:

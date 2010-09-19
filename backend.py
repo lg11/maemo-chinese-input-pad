@@ -191,12 +191,21 @@ class Cand():
         self.page_index = 0
     def reset(self):
         self.page_index = 0
+        self.selected = []
         self.list[0] = None
         self.list[1] = None
         self.list[2] = None
         self.list[3] = None
         self.list[4] = None
         self.list[5] = None
+    def cancel_select(self):
+        i = len( self.backend.selected )
+        if i > 0:
+            self.backend.code = self.backend.selected[i-1][self.backend.cache.IDX_CODE] + self.backend.code
+            self.backend.selected = self.backend.selected[:-1]
+            return True
+        else:
+            return False
     def select( self, index ):
         if self.list[index] != None:
             self.backend.selected.append( self.list[index] )
