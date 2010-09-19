@@ -199,10 +199,18 @@ class Cand():
         self.list[4] = None
         self.list[5] = None
     def select( self, index ):
-        self.backend.selected.append( self.list[index] )
-        self.backend.code = self.backend.code[self.query_index:]
-        self.backend.cache.reset()
-        self.backend.search()
+        if self.list[index] != None:
+            self.backend.selected.append( self.list[index] )
+            self.backend.code = self.backend.code[self.query_index:]
+            self.backend.cache.reset()
+            self.backend.search()
+    def commit(self):
+        text = ""
+        for item in self.backend.selected:
+            #print item
+            text = text + item[3]
+        self.backend.reset()
+        return text
 
 class Backend():
     """

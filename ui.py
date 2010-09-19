@@ -29,14 +29,18 @@ def cb_backspace( widget, ipad ):
             ipad.text_label.set_text(text)
 
 def cb_pad_click( widget, ipad, data ):
-    if ipad.mode == 0:
+    if ipad.mode == ipad.MODE_INPUT:
         if data == "1":
-            ipad.mode = 1
-            ipad.update()
+            if len(ipad.backend.code) == 0:
+                ipad.mode = ipad.MODE_PUNC
+                ipad.update()
+            else:
+                ipad.mode = ipad.MODE_SELECT
+                ipad.update()
         else:
             ipad.backend.append_code( data )
             ipad.update()
-    elif ipad.mode == 1:
+    elif ipad.mode == ipad.MODE_SELECT:
         if data == "1":
             ipad.select( 0 )
         elif data == "2":
@@ -57,6 +61,29 @@ def cb_pad_click( widget, ipad, data ):
             ipad.update()
         elif data == "8":
             ipad.commit()
+        else:
+            pass
+    elif ipad.mode == ipad.MODE_PUNC:
+        if data == "1":
+            ipad.commit_punc( 0 )
+        elif data == "2":
+            ipad.commit_punc( 1 )
+        elif data == "3":
+            ipad.commit_punc( 2 )
+        elif data == "4":
+            ipad.commit_punc( 3 )
+        elif data == "5":
+            ipad.commit_punc( 4 )
+        elif data == "6":
+            ipad.commit_punc( 5 )
+        elif data == "9":
+            ipad.next_punc()
+            ipad.update()
+        elif data == "7":
+            ipad.prev_punc()
+            ipad.update()
+        elif data == "8":
+            pass
         else:
             pass
     else:
@@ -87,13 +114,25 @@ class NumPad( gtk.Frame ):
         t.show()
     def update(self):
         cand = self.ipad.backend.cand
-        for i in range(6):
-            if cand.list[i]:
-                self.button[i].label.set_text( cand.list[i][3] )
-            else:
-                self.button[i].label.set_text( self.button_label[0][i] )
+        if self.ipad.mode == self.ipad.MODE_PUNC:
+            for i in range(6):
+                self.button[i].label.set_text( self.ipad.punc_list[self.ipad.punc_index][i] )
+        else:
+            for i in range(6):
+                if cand.list[i]:
+                    self.button[i].label.set_text( cand.list[i][3] )
+                else:
+                    self.button[i].label.set_text( self.button_label[0][i] )
         
 class ChineseInputPad( gtk.Frame ):
+    punc_list = [ \
+            ["，","。","？","“","”","……"]\
+            ,\
+            ["！","（","）","～","《","》"]\
+            ]
+    MODE_INPUT = 0
+    MODE_SELECT = 1
+    MODE_PUNC = 2
     def __init__( self, text_label ):
         gtk.Frame.__init__(self)
         self.backend = Backend(self)
@@ -122,31 +161,31 @@ class ChineseInputPad( gtk.Frame ):
         self.bc_b.show()
         self.bc_b.connect( "clicked", cb_backspace, self )
 
-        self.mode = 0
+        self.mode = self.MODE_INPUT
+        self.punc_index = 0
 
         self.text_label = text_label
     def update(self):
         cand = self.backend.cand
+        cand_py = ""
+        cand_hz = ""
         if cand.list[0]:
-            if self.mode == 0:
-                py = cand.list[0][2] + "'" + self.backend.code[cand.query_index:]
-                hz = cand.list[0][3] + "'" + self.backend.code[cand.query_index:]
-                self.l_pinyin.set_text(py)
-                self.l_hanzi.set_text(hz)
-            elif self.mode == 1:
-                selected_text = ""
-                for item in self.backend.selected:
-                    selected_text = selected_text + item[QueryCache.IDX_HANZI]
-                cand_hz = cand.list[0][QueryCache.IDX_HANZI]
-                cand_py = cand.list[0][QueryCache.IDX_PINYIN]
-                py = selected_text + cand_py + self.backend.code[cand.query_index:]
-                hz = selected_text + cand_hz + self.backend.code[cand.query_index:]
-                self.l_pinyin.set_text(py)
-                self.l_hanzi.set_text(hz)
-                self.l_hanzi.select_region(len(selected_text),len(selected_text)+len(cand_hz))
-        else:
-            self.l_pinyin.set_text(self.backend.code)
-            self.l_hanzi.set_text(self.backend.code)
+            cand_hz = cand.list[0][QueryCache.IDX_HANZI] + "'"
+            cand_py = cand.list[0][QueryCache.IDX_PINYIN] + "'"
+        if self.mode == self.MODE_INPUT:
+            py = cand_py + self.backend.code[cand.query_index:]
+            hz = cand_hz + self.backend.code[cand.query_index:]
+            self.l_pinyin.set_text(py)
+            self.l_hanzi.set_text(hz)
+        elif self.mode == self.MODE_SELECT:
+            selected_text = ""
+            for item in self.backend.selected:
+                selected_text = selected_text + item[QueryCache.IDX_HANZI]
+            py = selected_text + cand_py + self.backend.code[cand.query_index:]
+            hz = selected_text + cand_hz + self.backend.code[cand.query_index:]
+            self.l_pinyin.set_text(py)
+            self.l_hanzi.set_text(hz)
+            self.l_hanzi.select_region(len(selected_text),len(selected_text)+len(cand_hz)-1)
         self.npad.update()
     def cand_update(self):
         #print "cand update"
@@ -162,16 +201,26 @@ class ChineseInputPad( gtk.Frame ):
         self.backend.cand.select(i)
         if len( self.backend.code ) < 1:
             self.commit()
+    def reset(self):
+        self.mode = self.MODE_INPUT
+        self.punc_index = 0
+        self.update()
     def commit(self):
-        #print "commit"
-        text = ""
-        #print self.text_label.get_text()
-        for item in self.backend.selected:
-            text = text + item[3]
+        text = self.backend.cand.commit()
         self.text_label.set_text( self.text_label.get_text() + text )
-        #self.text_label.set_text( "text" )
-        self.backend.reset()
-        self.mode = 0
+        self.reset()
+    def commit_punc( self, i ):
+        self.text_label.set_text( self.text_label.get_text() + self.punc_list[self.punc_index][i] )
+        self.reset()
+    def next_punc(self):
+        self.punc_index = self.punc_index + 1
+        if self.punc_index > 1:
+            self.punc_index = 1
+        self.update()
+    def prev_punc(self):
+        self.punc_index = self.punc_index - 1
+        if self.punc_index < 0:
+            self.punc_index = 0
         self.update()
 
 def cb_quit( widget ):
