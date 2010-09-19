@@ -7,28 +7,31 @@ from backend import Backend, QueryCache
 from ui_base import LabelButton
 
 def cb_backspace( widget, ipad ):
-    if len( ipad.backend.code ) > 0:
-        if ipad.mode == 1:
-            #print "shorter"
-            ipad.backend.cand.shorter()
-            ipad.backend.cand.reset_page()
-            #print ipad.backend.cand.query_index
-            if ipad.backend.cand.query_index < 1:
-                ipad.mode = 0
-                ipad.backend.cand.longest()
-            ipad.backend.cand.update()
-        elif ipad.mode == 0:
+    if ipad.mode == ipad.MODE_INPUT:
+        if len( ipad.backend.code ) > 0:
             ipad.backend.backspace_code()
             ipad.backend.cand.longest()
             ipad.backend.cand.reset_page()
             ipad.backend.cand.update()
-        ipad.update()
-    else:
-        text = ipad.text_label.get_text()
-        if len(text) > 0:
-            text = text.decode('utf8')
-            text = text[:-1]
-            ipad.text_label.set_text(text)
+        else:
+            text = ipad.text_label.get_text()
+            if len(text) > 0:
+                text = text.decode('utf8')
+                text = text[:-1]
+                ipad.text_label.set_text(text)
+    elif ipad.mode == ipad.MODE_SELECT:
+        #print "shorter"
+        ipad.backend.cand.shorter()
+        ipad.backend.cand.reset_page()
+        #print ipad.backend.cand.query_index
+        if ipad.backend.cand.query_index < 1:
+            ipad.mode = 0
+            ipad.backend.cand.longest()
+        ipad.backend.cand.update()
+    elif ipad.mode == ipad.MODE_PUNC:
+        "exit"
+        ipad.reset()
+    ipad.update()
 
 def cb_pad_click( widget, ipad, data ):
     if ipad.mode == ipad.MODE_INPUT:
