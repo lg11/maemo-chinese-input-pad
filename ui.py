@@ -5,6 +5,7 @@ import gobject
 import pango
 from backend import Backend, QueryCache
 from ui_base import LabelButton
+from ui_base import LongPressButton
 
 def cb_backspace( widget, ipad ):
     if ipad.mode == ipad.MODE_INPUT:
@@ -37,68 +38,72 @@ def cb_backspace( widget, ipad ):
         ipad.reset()
     ipad.update()
 
-def cb_pad_click( widget, ipad, data ):
-    if ipad.mode == ipad.MODE_INPUT:
-        if data == "1":
-            if len(ipad.backend.code) == 0:
-                ipad.mode = ipad.MODE_PUNC
-                ipad.update()
+def cb_npad_longpress( widget ):
+    print "longpressed"
+
+def cb_npad_click( widget, ipad, data ):
+    if widget.longpressed_flag != True :
+        if ipad.mode == ipad.MODE_INPUT:
+            if data == "1":
+                if len(ipad.backend.code) == 0:
+                    ipad.mode = ipad.MODE_PUNC
+                    ipad.update()
+                else:
+                    ipad.mode = ipad.MODE_SELECT
+                    ipad.update()
             else:
-                ipad.mode = ipad.MODE_SELECT
+                ipad.backend.append_code( data )
                 ipad.update()
-        else:
-            ipad.backend.append_code( data )
-            ipad.update()
-    elif ipad.mode == ipad.MODE_SELECT:
-        if data == "1":
-            ipad.select( 0 )
-        elif data == "2":
-            ipad.select( 1 )
-        elif data == "3":
-            ipad.select( 2 )
-        elif data == "4":
-            ipad.select( 3 )
-        elif data == "5":
-            ipad.select( 4 )
-        elif data == "6":
-            ipad.select( 5 )
-        elif data == "9":
-            ipad.backend.cand.next_page()
-            ipad.backend.cand.update()
-            ipad.update()
-        elif data == "7":
-            ipad.backend.cand.prev_page()
-            ipad.backend.cand.update()
-            ipad.update()
-        elif data == "8":
-            ipad.commit()
+        elif ipad.mode == ipad.MODE_SELECT:
+            if data == "1":
+                ipad.select( 0 )
+            elif data == "2":
+                ipad.select( 1 )
+            elif data == "3":
+                ipad.select( 2 )
+            elif data == "4":
+                ipad.select( 3 )
+            elif data == "5":
+                ipad.select( 4 )
+            elif data == "6":
+                ipad.select( 5 )
+            elif data == "9":
+                ipad.backend.cand.next_page()
+                ipad.backend.cand.update()
+                ipad.update()
+            elif data == "7":
+                ipad.backend.cand.prev_page()
+                ipad.backend.cand.update()
+                ipad.update()
+            elif data == "8":
+                ipad.commit()
+            else:
+                pass
+        elif ipad.mode == ipad.MODE_PUNC:
+            if data == "1":
+                ipad.commit_punc( 0 )
+            elif data == "2":
+                ipad.commit_punc( 1 )
+            elif data == "3":
+                ipad.commit_punc( 2 )
+            elif data == "4":
+                ipad.commit_punc( 3 )
+            elif data == "5":
+                ipad.commit_punc( 4 )
+            elif data == "6":
+                ipad.commit_punc( 5 )
+            elif data == "9":
+                ipad.next_punc()
+                ipad.update()
+            elif data == "7":
+                ipad.prev_punc()
+                ipad.update()
+            elif data == "8":
+                pass
+            else:
+                pass
         else:
             pass
-    elif ipad.mode == ipad.MODE_PUNC:
-        if data == "1":
-            ipad.commit_punc( 0 )
-        elif data == "2":
-            ipad.commit_punc( 1 )
-        elif data == "3":
-            ipad.commit_punc( 2 )
-        elif data == "4":
-            ipad.commit_punc( 3 )
-        elif data == "5":
-            ipad.commit_punc( 4 )
-        elif data == "6":
-            ipad.commit_punc( 5 )
-        elif data == "9":
-            ipad.next_punc()
-            ipad.update()
-        elif data == "7":
-            ipad.prev_punc()
-            ipad.update()
-        elif data == "8":
-            pass
-        else:
-            pass
-    else:
-        pass
 
 class NumPad( gtk.Frame ):
     button_label = [ \
@@ -118,7 +123,8 @@ class NumPad( gtk.Frame ):
             for j in range(3):
                 b = LabelButton(self.button_label[0][i*3+j])
                 b.set_size_request(145,110)
-                b.connect( "clicked", cb_pad_click, ipad, self.button_label[0][i*3+j] )
+                b.connect( "clicked", cb_npad_click, ipad, self.button_label[0][i*3+j] )
+                b.connect( "longpressed", cb_npad_longpress )
                 t.attach( b, j, j+1, i, i+1 )
                 b.show()
                 self.button.append(b)
@@ -166,11 +172,11 @@ class ChineseInputPad( gtk.Frame ):
         self.l_pinyin.show()
         self.l_hanzi.show()
 
-        self.bc_b = gtk.Button("退格")
-        self.bc_b.set_size_request( 145, 75 )
-        self.layout.put( self.bc_b, 290, 10 )
-        self.bc_b.show()
-        self.bc_b.connect( "clicked", cb_backspace, self )
+        self.bs_b = gtk.Button("退格")
+        self.bs_b.set_size_request( 145, 75 )
+        self.layout.put( self.bs_b, 290, 10 )
+        self.bs_b.show()
+        self.bs_b.connect( "clicked", cb_backspace, self )
 
         self.mode = self.MODE_INPUT
         self.punc_index = 0
