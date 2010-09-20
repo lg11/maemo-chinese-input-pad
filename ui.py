@@ -40,8 +40,6 @@ def cb_backspace( widget, ipad ):
 
 def cb_npad_longpress( widget ):
     print "longpressed"
-    print "longpressed"
-
 
 def cb_npad_click( widget, ipad, data ):
     if widget.longpressed_flag != True :
