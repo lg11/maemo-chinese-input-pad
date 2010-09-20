@@ -1,6 +1,9 @@
 import ui
 import sys
 
-if __name__ == "__main__":
+def main():
     app = ui.App()
     app.run()
+
+if __name__ == "__main__":
+    main()
