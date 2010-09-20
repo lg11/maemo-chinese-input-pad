@@ -18,13 +18,13 @@ if __name__ == "__main__":
         for j in range(10):
 
             p_name = "ci_" + str(i) + "_" + str(j)
-            sqls = "create table " + p_name + " ( code char(" + str(i) + "), pinyin varchar(128), hanzi varchar(64), priority integer, update_count integer )"
+            sqls = "create table " + p_name + " ( code char(" + str(i) + "), pinyin varchar(128), hanzi varchar(64), next integer )"
             print sqls
             cur.execute( sqls )
 
             if i < 7 :
                 p_name = "zi_" + str(i) + "_" + str(j)
-                sqls = "create table " + p_name + " ( code char(" + str(i) + "), pinyin varchar(128), hanzi varchar(64), priority integer, update_count integer )"
+                sqls = "create table " + p_name + " ( code char(" + str(i) + "), pinyin varchar(128), hanzi varchar(64), next integer )"
                 print sqls
                 cur.execute( sqls )
 
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     cur.execute( sqls )
     
     for i in range( MAX_CODE_ARREY_LENGTH ):
-        sqls = "select * from pc_" + str(i) + " order by freq"
+        sqls = "select code from pc_" + str(i) + " order by freq"
         rs = cur_old.execute( sqls )
         priority_zi = []
         priority_ci = []
