@@ -50,18 +50,12 @@ class QueryThread( threading.Thread ):
         self.conn = None
         self.cur = None
         self.queue = queue
-        self.sql_ci = []
-        self.sql_zi = []
+        self.sql_sentence = []
         for i in range(65):
-            self.sql_ci.append([])
-            if i < 7 :
-                self.sql_zi.append([])
+            self.sql_sentence.append([])
             for j in range(10):
-                s = "select ROWID,* from ci_" + str(i) + "_" + str(j) + " where code=? order by update_count desc, priority asc"
-                self.sql_ci[i].append( s )
-                if i < 7 :
-                    s = "select ROWID,* from zi_" + str(i) + "_" + str(j) + " where code=? order by update_count desc, priority"
-                    self.sql_zi[i].append( s )
+                s = "select * from phrase_" + str(i) + "_" + str(j) + " where code=? order by freq desc"
+                self.sql_sentence[i].append(s)
     def run(self):
         """
         线程实际运行时，执行的函数。由于sqlite的连接不能跨线程，所以在这里打开连接。
@@ -78,7 +72,7 @@ class QueryThread( threading.Thread ):
             j = int(code[0])
             cache.flag[i] = QueryCache.FLAG_IN_QUERY
             #print "start code = " + code
-            rs = self.cur.execute( self.sql_ci[i][j], t )
+            rs = self.cur.execute( self.sql_sentence[i][j], t )
             rl = rs.fetchall()
             for r in rl:
                 print r[3] + str(r[4])
