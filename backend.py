@@ -74,8 +74,8 @@ class QueryThread( threading.Thread ):
             #print "start code = " + code
             rs = self.cur.execute( self.sql_sentence[i][j], t )
             rl = rs.fetchall()
-            for r in rl:
-                print r[3] + str(r[4])
+            #for r in rl:
+                #print r[3] + str(r[4])
             if len(rl) > 0:
                 cache.list[i] = rl
             else:
