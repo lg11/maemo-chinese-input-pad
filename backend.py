@@ -11,11 +11,10 @@ class QueryCache():
     FLAG_INVAILD = 0
     FLAG_IN_QUERY = 1
     FLAG_VAILD = 2
-    IDX_ID = 0
+    IDX_ROWID = 0
     IDX_CODE = 1
     IDX_PINYIN = 2
     IDX_HANZI = 3
-    IDX_FREQ = 4
     def __init__(self):
         """
         初始化
@@ -51,10 +50,12 @@ class QueryThread( threading.Thread ):
         self.conn = None
         self.cur = None
         self.queue = queue
-        self.sql_q = []
+        self.sql_sentence = []
         for i in range(65):
-            s = "select * from pc_" + str(i) + " where code=? order by freq desc"
-            self.sql_q.append( s )
+            self.sql_sentence.append([])
+            for j in range(10):
+                s = "select * from phrase_" + str(i) + "_" + str(j) + " where code=? order by freq desc"
+                self.sql_sentence[i].append(s)
     def run(self):
         """
         线程实际运行时，执行的函数。由于sqlite的连接不能跨线程，所以在这里打开连接。
@@ -68,12 +69,13 @@ class QueryThread( threading.Thread ):
             frontend = data[2]
             i = len(code)
             t = ( code, )
+            j = int(code[0])
             cache.flag[i] = QueryCache.FLAG_IN_QUERY
             #print "start code = " + code
-            rs = self.cur.execute( self.sql_q[i], t )
-            rl = []
-            for r in rs :
-                rl.append(r)
+            rs = self.cur.execute( self.sql_sentence[i][j], t )
+            rl = rs.fetchall()
+            for r in rl:
+                print r[3] + str(r[4])
             if len(rl) > 0:
                 cache.list[i] = rl
             else:
