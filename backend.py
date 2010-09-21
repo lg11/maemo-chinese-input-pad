@@ -50,12 +50,24 @@ class OperateThread( threading.Thread ):
         self.cur = None
         self.queue = queue
         self.sql_sentence_update = []
+        self.sql_sentence_insert = []
+        self.sql_sentence_insert_query = []
+        self.sql_sentence_insert_count = []
         for i in range(65):
             self.sql_sentence_update.append([])
+            self.sql_sentence_insert.append([])
+            self.sql_sentence_insert_query.append([])
+            self.sql_sentence_insert_count.append([])
             for j in range(10):
                 s = "update phrase_" + str(i) + "_" + str(j) + " set freq = ( ( select freq from phrase_" + str(i) + "_" + str(j) + " where key = ? ) + 1 ) where key= ?"
-                #print s
                 self.sql_sentence_update[i].append(s)
+                s = "insert into phrase_" + str(i) + "_" + str(j) + " values ( NULL, ?, ?, ?, ?, ? )"
+                self.sql_sentence_insert[i].append(s)
+                s = "select * from phrase_" + str(i) + "_" + str(j) + " where code = ? and hanzi = ?"
+                self.sql_sentence_insert_count[i].append(s)
+                s = "select * from phrase_" + str(i) + "_" + str(j) + " where code = ? order by freq desc"
+                self.sql_sentence_insert_query[i].append(s)
+                #print s
     def run(self):
         """
         线程实际运行时，执行的函数。由于sqlite的连接不能跨线程，所以在这里打开连接。
@@ -67,7 +79,7 @@ class OperateThread( threading.Thread ):
             data = self.queue.get()
             time_stamp = time.time()
             request = data[0]
-            if request == self. OPERATE_REQUEST_UPDATE :
+            if request == self.OPERATE_REQUEST_UPDATE :
                 i = data[1]
                 j = data[2]
                 update_key = data[3]
@@ -75,8 +87,68 @@ class OperateThread( threading.Thread ):
                 t = ( pos_key, update_key , )
                 rs = self.cur.execute( self.sql_sentence_update[i][j], t )
                 self.conn.commit()
-            print "operate cast " + str( time.time() - time_stamp ) + " s"
-                #t = 
+                print "update cast " + str( time.time() - time_stamp ) + " s"
+            elif request == self.OPERATE_REQUEST_INSERT :
+                code = data[1]
+                pinyin = data[2]
+                hanzi = data[3]
+                length = data[4]
+                freq = 0
+                i = len(code)
+                j = int(code[0])
+                t = ( code, )
+                rs = self.cur.execute( self.sql_sentence_insert_query[i][j], t )
+                r = rs.fetchone()
+                if r == None :
+                    #print "no code"
+                    t = ( code, pinyin, hanzi, 1, length )
+                    self.cur.execute( self.sql_sentence_insert[i][j], t )
+                else:
+                    t = ( code, hanzi, )
+                    rs2 = self.cur.execute( self.sql_sentence_insert_count[i][j], t )
+                    r2 = rs.fetchone()
+                    if r2 == None :
+                        #print "no ci"
+                        freq = r[ QueryCache.IDX_FREQ ] - 1
+                        r = rs.fetchone()
+                        if r != None :
+                            freq = r[ QueryCache.IDX_FREQ ] - 1
+                            r = rs.fetchone()
+                            if r != None :
+                                freq = r[ QueryCache.IDX_FREQ ] - 1
+                        t = ( code, pinyin, hanzi, freq, length )
+                        self.cur.execute( self.sql_sentence_insert[i][j], t )
+                        #exist_flag = False
+                    else:
+                        #print "has"
+                        update_key = r2[ QueryCache.IDX_KEY ]
+                        pos_key = r[ QueryCache.IDX_KEY ]
+                        first_key = pos_key
+                        if update_key != pos_key :
+                            r = rs.fetchone()
+                            pos_key = r[ QueryCache.IDX_KEY ]
+                            if update_key != pos_key :
+                                r = rs.fetchone()
+                                pos_key = r[ QueryCache.IDX_KEY ]
+                                if update_key != pos_key :
+                                    r = rs.fetchone()
+                                    pos_key = r[ QueryCache.IDX_KEY ]
+                                    if update_key != pos_key :
+                                        t = ( pos_key, update_key , )
+                                        rs = self.cur.execute( self.sql_sentence_update[i][j], t )
+                                    else:
+                                        pass
+                                else:
+                                    t = ( first_key, update_key , )
+                                    rs = self.cur.execute( self.sql_sentence_update[i][j], t )
+                            else:
+                                t = ( first_key, update_key , )
+                                rs = self.cur.execute( self.sql_sentence_update[i][j], t )
+                        else:
+                            pass
+                self.conn.commit()
+                print "insert cast " + str( time.time() - time_stamp ) + " s"
+            #print "operate cast " + str( time.time() - time_stamp ) + " s"
 
 class QueryThread( threading.Thread ):
     """
@@ -173,7 +245,7 @@ class Conn():
         @frontend 输入面板前端，调用该前端的request_update方法进行刷新。
         """
         self.query_queue.put(data)
-    def update( self, data ):
+    def operate( self, data ):
         self.operate_queue.put(data)
 
 class Cand():
@@ -317,8 +389,21 @@ class Cand():
             pos_key = item[ self.backend.cache.IDX_KEY ]
             if update_key != pos_key:
                 data = [ request, length, j, update_key, pos_key ]
-                self.backend.conn.update(data)
+                self.backend.conn.operate(data)
 
+        if select_count > 1: #insert
+            code = ""
+            pinyin = ""
+            for i in range( select_count ) :
+                item = self.backend.selected[i]
+                code = code + item[self.backend.cache.IDX_CODE]
+                pinyin = pinyin + "'" + item[self.backend.cache.IDX_PINYIN]
+            pinyin = pinyin[1:]
+            length = pinyin.count("'") + 1
+            hanzi = text
+            request = OperateThread.OPERATE_REQUEST_INSERT
+            data = [ request, code, pinyin, hanzi, length ]
+            self.backend.conn.operate(data)
         self.backend.reset()
         return text
 
