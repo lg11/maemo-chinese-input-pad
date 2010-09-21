@@ -4,6 +4,8 @@ import sqlite3
 import threading
 import Queue
 
+import time
+
 class QueryCache():
     """
     查询缓存
@@ -11,10 +13,12 @@ class QueryCache():
     FLAG_INVAILD = 0
     FLAG_IN_QUERY = 1
     FLAG_VAILD = 2
-    IDX_ROWID = 0
+    IDX_KEY = 0
     IDX_CODE = 1
     IDX_PINYIN = 2
     IDX_HANZI = 3
+    IDX_FREQ = 4
+    IDX_LENGTH = 5
     def __init__(self):
         """
         初始化
@@ -22,9 +26,12 @@ class QueryCache():
         @flag 标志
         """
         self.list = []
+        #self.hanzi_list = []
         self.flag = [] 
+        #self.hanzi_list = []
         for i in range(65):
             self.list.append(None)
+            #self.hanzi_list.append(None)
             self.flag.append(self.FLAG_INVAILD)
     def reset(self):
         """
@@ -32,6 +39,43 @@ class QueryCache():
         """
         for i in range(65):
             self.flag[i] = self.FLAG_INVAILD
+
+class OperateThread( threading.Thread ):
+    OPERATE_REQUEST_INSERT = 1
+    OPERATE_REQUEST_DELETE = 2
+    OPERATE_REQUEST_UPDATE = 3
+    def __init__( self, queue ):
+        threading.Thread.__init__(self)
+        self.conn = None
+        self.cur = None
+        self.queue = queue
+        self.sql_sentence_update = []
+        for i in range(65):
+            self.sql_sentence_update.append([])
+            for j in range(10):
+                s = "update phrase_" + str(i) + "_" + str(j) + " set freq = ( ( select freq from phrase_" + str(i) + "_" + str(j) + " where key = ? ) + 1 ) where key= ?"
+                #print s
+                self.sql_sentence_update[i].append(s)
+    def run(self):
+        """
+        线程实际运行时，执行的函数。由于sqlite的连接不能跨线程，所以在这里打开连接。
+        """
+        self.conn = sqlite3.connect( "data/main.db" )
+        self.cur = self.conn.cursor()
+        while(True):
+            data = self.queue.get()
+            time_stamp = time.time()
+            request = data[0]
+            if request == self. OPERATE_REQUEST_UPDATE :
+                i = data[1]
+                j = data[2]
+                update_key = data[3]
+                pos_key = data[4]
+                t = ( pos_key, pos_key , )
+                rs = self.cur.execute( self.sql_sentence[i][j], t )
+                #conn
+            print "operate cast " + str( time.time() - time_stamp ) + " s"
+                #t = 
 
 class QueryThread( threading.Thread ):
     """
@@ -64,24 +108,38 @@ class QueryThread( threading.Thread ):
         self.cur = self.conn.cursor()
         while(True):
             data = self.queue.get()
+            time_stamp = time.time()
             code = data[0]
             cache = data[1]
             frontend = data[2]
             i = len(code)
+            cache.flag[i] = QueryCache.FLAG_IN_QUERY
             t = ( code, )
             j = int(code[0])
-            cache.flag[i] = QueryCache.FLAG_IN_QUERY
             #print "start code = " + code
             rs = self.cur.execute( self.sql_sentence[i][j], t )
             rl = rs.fetchall()
-            #for r in rl:
-                #print r[3] + str(r[4])
+
+            #hz_rl = []
+            #if i > 6 :
+                #pass
+            #else:
+                #for r in rl:
+                    #if r[cache.IDX_LENGTH] == 1 :
+                        #hz_rl.append(r) 
+
             if len(rl) > 0:
                 cache.list[i] = rl
             else:
                 cache.list[i] = None
+            #if len(hz_rl) > 0:
+                #cache.hanzi_list[i] = hz_rl
+            #else:
+                #cache.hanzi_list[i] = None
             cache.flag[i] = QueryCache.FLAG_VAILD
             #print "end"
+
+            print "query cast " + str( time.time() - time_stamp ) + " s"
             frontend.request_update()
 
 class Conn():
@@ -94,10 +152,14 @@ class Conn():
         @queue 和查询线程交换数据用的队列
         @qthread 查询线程
         """
-        self.queue = Queue.Queue()
-        self.qthread = QueryThread( self.queue )
-        self.qthread.setDaemon(True) #让子线程在主线程退出后随之退出。
-        self.qthread.start()
+        self.query_queue = Queue.Queue()
+        self.operate_queue = Queue.Queue()
+        self.query_thread = QueryThread( self.query_queue )
+        self.operate_thread = OperateThread( self.operate_queue )
+        self.query_thread.setDaemon(True) #让子线程在主线程退出后随之退出。
+        self.operate_thread.setDaemon(True)
+        self.query_thread.start()
+        self.operate_thread.start()
     def query( self, data ):
         """
         查询，调用queue的put方法，向查询线程提交数据。
@@ -108,7 +170,9 @@ class Conn():
         @query_cache_flag 保存查询结果的缓存列表flag。
         @frontend 输入面板前端，调用该前端的request_update方法进行刷新。
         """
-        self.queue.put(data)
+        self.query_queue.put(data)
+    def update( self, data ):
+        self.operate_queue.put(data)
 
 class Cand():
     """
@@ -189,6 +253,17 @@ class Cand():
     def prev_page(self):
         if self.page_index > 0:
             self.page_index = self.page_index - 1
+        else:
+            pass
+            #if self.query_index > 6 :
+                #pass
+            #else:
+                #rs = self.backend.cache.hanzi_list[self.query_index]
+                #idx = self.page_index - 1
+                #hz_idx = -1 - idx
+                #for r in rs :
+                    #print r
+                #idx = self.page_index + 1
     def reset_page(self):
         self.page_index = 0
     def reset(self):
