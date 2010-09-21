@@ -53,11 +53,13 @@ class OperateThread( threading.Thread ):
         self.sql_sentence_insert = []
         self.sql_sentence_insert_query = []
         self.sql_sentence_insert_count = []
+        self.sql_sentence_delete = []
         for i in range(65):
             self.sql_sentence_update.append([])
             self.sql_sentence_insert.append([])
             self.sql_sentence_insert_query.append([])
             self.sql_sentence_insert_count.append([])
+            self.sql_sentence_delete.append([])
             for j in range(10):
                 s = "update phrase_" + str(i) + "_" + str(j) + " set freq = ( ( select freq from phrase_" + str(i) + "_" + str(j) + " where key = ? ) + 1 ) where key= ?"
                 self.sql_sentence_update[i].append(s)
@@ -67,6 +69,8 @@ class OperateThread( threading.Thread ):
                 self.sql_sentence_insert_count[i].append(s)
                 s = "select * from phrase_" + str(i) + "_" + str(j) + " where code = ? order by freq desc"
                 self.sql_sentence_insert_query[i].append(s)
+                s = "delete from phrase_" + str(i) + "_" + str(j) + " where key = ?"
+                self.sql_sentence_delete[i].append(s)
                 #print s
     def run(self):
         """
@@ -135,19 +139,28 @@ class OperateThread( threading.Thread ):
                                     pos_key = r[ QueryCache.IDX_KEY ]
                                     if update_key != pos_key :
                                         t = ( pos_key, update_key , )
-                                        rs = self.cur.execute( self.sql_sentence_update[i][j], t )
+                                        self.cur.execute( self.sql_sentence_update[i][j], t )
                                     else:
                                         pass
                                 else:
                                     t = ( first_key, update_key , )
-                                    rs = self.cur.execute( self.sql_sentence_update[i][j], t )
+                                    self.cur.execute( self.sql_sentence_update[i][j], t )
                             else:
                                 t = ( first_key, update_key , )
-                                rs = self.cur.execute( self.sql_sentence_update[i][j], t )
+                                self.cur.execute( self.sql_sentence_update[i][j], t )
                         else:
                             pass
                 self.conn.commit()
                 print "insert cast " + str( time.time() - time_stamp ) + " s"
+            elif request == self.OPERATE_REQUEST_DELETE :
+                code = data[1]
+                i = len(code)
+                j = int(code[0])
+                key = data[2]
+                t = ( key, )
+                self.cur.execute( self.sql_sentence_delete[i][j], t )
+                self.conn.commit()
+                print "delete cast " + str( time.time() - time_stamp ) + " s"
             #print "operate cast " + str( time.time() - time_stamp ) + " s"
 
 class QueryThread( threading.Thread ):
@@ -193,6 +206,7 @@ class QueryThread( threading.Thread ):
             #print "start code = " + code
             rs = self.cur.execute( self.sql_sentence[i][j], t )
             rl = rs.fetchall()
+            #print type(rl)
 
             #hz_rl = []
             #if i > 6 :
@@ -319,11 +333,12 @@ class Cand():
         self.query_index = i
     def next_page(self):
         rs = self.backend.cache.list[self.query_index]
-        idx = self.page_index + 1
-        if idx * 6 >= len( rs ):
-            pass
-        else:
-            self.page_index = idx
+        if rs :
+            idx = self.page_index + 1
+            if idx * 6 >= len( rs ):
+                pass
+            else:
+                self.page_index = idx
     def prev_page(self):
         if self.page_index > 0:
             self.page_index = self.page_index - 1
@@ -360,7 +375,7 @@ class Cand():
         else:
             return False
     def select( self, index ):
-        if self.list[index] != None:
+        if self.list[index] != None and self.list[index][ QueryCache.IDX_LENGTH ] > 0:
             self.backend.selected.append( self.list[index] )
             idx = self.page_index * 6 + index
             if idx < 3:
@@ -371,6 +386,18 @@ class Cand():
             self.backend.code = self.backend.code[self.query_index:]
             self.backend.cache.reset()
             self.backend.search()
+    def delete( self, index ):
+        item = self.list[index]
+        if item[ QueryCache.IDX_LENGTH ] > 1 :
+            #print item[3]
+            request = OperateThread.OPERATE_REQUEST_DELETE
+            data = [ request, item[ QueryCache.IDX_CODE ] , item[ QueryCache.IDX_KEY ] ]
+            self.backend.conn.operate(data)
+            idx = self.page_index * 6 + index
+            item = ( 0, "", "", "", 0, 0 )
+            self.backend.cache.list[ self.query_index ][idx] = item
+            self.list[index] = item
+            #print item[2]
     def commit(self):
         text = ""
         select_count = len( self.backend.selected )

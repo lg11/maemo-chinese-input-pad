@@ -34,12 +34,15 @@ def cb_backspace( widget, ipad ):
             ipad.backend.cand.longest()
         ipad.backend.cand.update()
     elif ipad.mode == ipad.MODE_PUNC:
-        "exit"
         ipad.reset()
     ipad.update()
 
-def cb_npad_longpress( widget ):
-    print "longpressed"
+def cb_npad_longpress( widget, ipad ):
+    if ipad.mode == ipad.MODE_SELECT:
+        if widget.index >= 0 and widget.index <= 6:
+            ipad.backend.cand.delete(widget.index)
+            ipad.update()
+    #print "longpressed"
 
 def cb_npad_click( widget, ipad, data ):
     if widget.longpressed_flag != True :
@@ -122,9 +125,10 @@ class NumPad( gtk.Frame ):
         for i in range(3):
             for j in range(3):
                 b = LabelButton(self.button_label[0][i*3+j])
+                b.index = i*3+j
                 b.set_size_request(145,110)
                 b.connect( "clicked", cb_npad_click, ipad, self.button_label[0][i*3+j] )
-                b.connect( "longpressed", cb_npad_longpress )
+                b.connect( "longpressed", cb_npad_longpress, ipad )
                 t.attach( b, j, j+1, i, i+1 )
                 b.show()
                 self.button.append(b)
@@ -202,7 +206,10 @@ class ChineseInputPad( gtk.Frame ):
             hz = selected_text + cand_hz + self.backend.code[cand.query_index:]
             self.l_pinyin.set_text(py)
             self.l_hanzi.set_text(hz)
-            self.l_hanzi.select_region(len(selected_text),len(selected_text)+len(cand_hz)-1)
+            if cand.list[0]:
+                self.l_hanzi.select_region(len(selected_text),len(selected_text)+len(cand_hz)-1)
+            else:
+                self.l_hanzi.select_region(len(selected_text),len(hz))
         self.npad.update()
     def cand_update(self):
         #print "cand update"

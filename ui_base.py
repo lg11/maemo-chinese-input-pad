@@ -33,7 +33,7 @@ class LongPressButton( gtk.Button ):
     
 
 class LabelButton( LongPressButton ):
-    def __init__( self, label ):
+    def __init__( self, label, index = -1 ):
         LongPressButton.__init__(self)
         self.label = gtk.Label()
         self.label.get_layout().set_wrap(pango.WRAP_CHAR)
@@ -43,3 +43,11 @@ class LabelButton( LongPressButton ):
         self.label.set_text(label)
         self.label.show()
         self.add(self.label)
+
+        self.index = index
+        self.disable_flag = False
+    def recover(self):
+        self.disable_flag = False
+    def set_disable( self, timeout = 500 ):
+        self.disable_flag = True
+        gobject.timeout_add( timeout, self.recover  )
