@@ -62,6 +62,7 @@ class OperateThread( threading.Thread ):
         """
         self.conn = sqlite3.connect( "data/main.db" )
         self.cur = self.conn.cursor()
+        self.cur.execute( "select * from phrase_0_0" )#first query has delay, due it.
         while(True):
             data = self.queue.get()
             time_stamp = time.time()
@@ -71,9 +72,9 @@ class OperateThread( threading.Thread ):
                 j = data[2]
                 update_key = data[3]
                 pos_key = data[4]
-                t = ( pos_key, pos_key , )
-                rs = self.cur.execute( self.sql_sentence[i][j], t )
-                #conn
+                t = ( pos_key, update_key , )
+                rs = self.cur.execute( self.sql_sentence_update[i][j], t )
+                self.conn.commit()
             print "operate cast " + str( time.time() - time_stamp ) + " s"
                 #t = 
 
@@ -106,6 +107,7 @@ class QueryThread( threading.Thread ):
         """
         self.conn = sqlite3.connect( "data/main.db" )
         self.cur = self.conn.cursor()
+        self.cur.execute( "select * from phrase_0_0" )#first query has delay, due it.
         while(True):
             data = self.queue.get()
             time_stamp = time.time()
@@ -269,6 +271,7 @@ class Cand():
     def reset(self):
         self.page_index = 0
         self.selected = []
+        self.selected_half = []
         self.list[0] = None
         self.list[1] = None
         self.list[2] = None
@@ -280,20 +283,42 @@ class Cand():
         if i > 0:
             self.backend.code = self.backend.selected[i-1][self.backend.cache.IDX_CODE] + self.backend.code
             self.backend.selected = self.backend.selected[:-1]
+            self.backend.selected_half = self.backend.selected_half[:-1]
             return True
         else:
             return False
     def select( self, index ):
         if self.list[index] != None:
             self.backend.selected.append( self.list[index] )
+            idx = self.page_index * 6 + index
+            if idx < 3:
+                idx = 0
+            else:
+                idx = idx / 2
+            self.backend.selected_half.append( self.backend.cache.list[self.query_index][idx] )
             self.backend.code = self.backend.code[self.query_index:]
             self.backend.cache.reset()
             self.backend.search()
     def commit(self):
         text = ""
-        for item in self.backend.selected:
+        select_count = len( self.backend.selected )
+        for i in range( select_count ) :
+            #biaoji
             #print item
-            text = text + item[3]
+            item = self.backend.selected[i]
+            text = text + item[self.backend.cache.IDX_HANZI]
+            
+            request = OperateThread.OPERATE_REQUEST_UPDATE
+            code = item[self.backend.cache.IDX_CODE]
+            length = len(code)
+            j = int(code[0])
+            update_key = item[ self.backend.cache.IDX_KEY ]
+            item = self.backend.selected_half[i]
+            pos_key = item[ self.backend.cache.IDX_KEY ]
+            if update_key != pos_key:
+                data = [ request, length, j, update_key, pos_key ]
+                self.backend.conn.update(data)
+
         self.backend.reset()
         return text
 
@@ -309,7 +334,7 @@ class Backend():
         @conn sqlite连接
         @frontend 输入法前端
         @code 输入的数字code
-        @selected_phrase 已经选择好的词列表
+        @selected 已经选择好的词列表
         @cache 查询结果缓冲
         @cand 候选字列表
         """
@@ -317,6 +342,7 @@ class Backend():
         self.frontend = frontend
         self.code = ""
         self.selected = []
+        self.selected_half = []
         self.cache = QueryCache()
         self.cand = Cand(self)
 
@@ -336,6 +362,7 @@ class Backend():
     def reset(self):
         self.code = ""
         self.selected = []
+        self.selected_half = []
         self.cand.reset()
         self.cache.reset()
 
