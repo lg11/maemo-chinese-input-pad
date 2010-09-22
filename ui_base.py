@@ -47,7 +47,8 @@ class LabelButton( LongPressButton ):
         self.index = index
         self.enable_flag = True
     def recover(self):
-        self.disable_flag = True
+        #print "recover"
+        self.enable_flag = True
     def set_disable( self, timeout = 500 ):
-        self.disable_flag = False
+        self.enable_flag = False
         gobject.timeout_add( timeout, self.recover  )

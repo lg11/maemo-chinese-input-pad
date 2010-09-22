@@ -9,8 +9,12 @@ from ui_base import LongPressButton
 
 def cb_backspace( widget, ipad ):
     if widget.enable_flag :
+        #print widget.enable_flag
         if ipad.mode == ipad.MODE_INPUT:
             if len( ipad.backend.code ) > 0:
+                if len( ipad.backend.code ) == 1:
+                    widget.set_disable()
+                    #print "disbale"
                 ipad.backend.backspace_code()
                 ipad.backend.cand.longest()
                 ipad.backend.cand.reset_page()
@@ -31,6 +35,7 @@ def cb_backspace( widget, ipad ):
                     ipad.backend.cache.reset()
                     ipad.backend.search()
                 else:
+                    widget.set_disable()
                     ipad.mode = ipad.MODE_INPUT
                 ipad.backend.cand.longest()
             ipad.backend.cand.update()
@@ -177,7 +182,7 @@ class ChineseInputPad( gtk.Frame ):
         self.l_pinyin.show()
         self.l_hanzi.show()
 
-        self.bs_b = gtk.Button("退格")
+        self.bs_b = LabelButton("退格")
         self.bs_b.set_size_request( 145, 75 )
         self.layout.put( self.bs_b, 290, 10 )
         self.bs_b.show()
