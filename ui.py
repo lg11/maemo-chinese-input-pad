@@ -8,34 +8,35 @@ from ui_base import LabelButton
 from ui_base import LongPressButton
 
 def cb_backspace( widget, ipad ):
-    if ipad.mode == ipad.MODE_INPUT:
-        if len( ipad.backend.code ) > 0:
-            ipad.backend.backspace_code()
-            ipad.backend.cand.longest()
-            ipad.backend.cand.reset_page()
-            ipad.backend.cand.update()
-        else:
-            text = ipad.text_label.get_text()
-            if len(text) > 0:
-                text = text.decode('utf8')
-                text = text[:-1]
-                ipad.text_label.set_text(text)
-    elif ipad.mode == ipad.MODE_SELECT:
-        #print "shorter"
-        ipad.backend.cand.shorter()
-        ipad.backend.cand.reset_page()
-        #print ipad.backend.cand.query_index
-        if ipad.backend.cand.query_index < 1:
-            if ipad.backend.cand.cancel_select():
-                ipad.backend.cache.reset()
-                ipad.backend.search()
+    if widget.enable_flag :
+        if ipad.mode == ipad.MODE_INPUT:
+            if len( ipad.backend.code ) > 0:
+                ipad.backend.backspace_code()
+                ipad.backend.cand.longest()
+                ipad.backend.cand.reset_page()
+                ipad.backend.cand.update()
             else:
-                ipad.mode = ipad.MODE_INPUT
-            ipad.backend.cand.longest()
-        ipad.backend.cand.update()
-    elif ipad.mode == ipad.MODE_PUNC:
-        ipad.reset()
-    ipad.update()
+                text = ipad.text_label.get_text()
+                if len(text) > 0:
+                    text = text.decode('utf8')
+                    text = text[:-1]
+                    ipad.text_label.set_text(text)
+        elif ipad.mode == ipad.MODE_SELECT:
+            #print "shorter"
+            ipad.backend.cand.shorter()
+            ipad.backend.cand.reset_page()
+            #print ipad.backend.cand.query_index
+            if ipad.backend.cand.query_index < 1:
+                if ipad.backend.cand.cancel_select():
+                    ipad.backend.cache.reset()
+                    ipad.backend.search()
+                else:
+                    ipad.mode = ipad.MODE_INPUT
+                ipad.backend.cand.longest()
+            ipad.backend.cand.update()
+        elif ipad.mode == ipad.MODE_PUNC:
+            ipad.reset()
+        ipad.update()
 
 def cb_npad_longpress( widget, ipad ):
     if ipad.mode == ipad.MODE_SELECT:
