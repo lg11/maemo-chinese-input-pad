@@ -1,6 +1,6 @@
-#ifndef HIMC_LOG_H
-#define HIMC_LOG_H
+#ifndef PLUGIN_UTILS_H
+#define PLUGIN_UTILS_H
 
-void ulog( const char* format, ... );
+//void ulog( const char* format, ... );
 
 #endif

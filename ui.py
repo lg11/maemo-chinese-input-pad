@@ -3,6 +3,13 @@
 import gtk
 import gobject
 import pango
+
+import dbus
+import dbus.service
+from dbus.mainloop.glib import DBusGMainLoop
+
+import os
+
 from backend import Backend, QueryCache
 from ui_base import LabelButton
 from ui_base import LongPressButton
@@ -116,9 +123,9 @@ def cb_npad_click( widget, ipad, data ):
 
 class NumPad( gtk.Frame ):
     button_label = [ \
-            ["1","2","3","4","5","6","7","8","9"]\
+            ["1","2","3","4","5","6","7","8","9","","",""]\
             ,\
-            ["1","2","3","4","5","6","7","8","9"]\
+            ["1","2","3","4","5","6","7","8","9","","",""]\
             ]
     def __init__( self, ipad ):
         gtk.Frame.__init__(self)
@@ -253,12 +260,6 @@ class ChineseInputPad( gtk.Frame ):
             self.punc_index = 0
         self.update()
 
-def cb_quit( widget ):
-    gtk.main_quit()
-
-def cb_copy( widget, ipad ):
-    ipad.clipboard.set_text( ipad.l_text.get_text() )
-
 class InputPad( gtk.Frame ):
     def __init__(self):
         gtk.Frame.__init__(self)
@@ -285,6 +286,7 @@ class InputPad( gtk.Frame ):
         self.cp_b.set_size_request( 200, 90 )
         self.layout.put( self.cp_b, 70, 300 )
         self.cp_b.show()
+        #self.cp_b.hide()
         self.cp_b.connect( "clicked", cb_copy, self )
 
         self.ipad.show()
@@ -292,20 +294,49 @@ class InputPad( gtk.Frame ):
 
         self.clipboard = gtk.clipboard_get(gtk.gdk.SELECTION_CLIPBOARD)
 
-class App():
+def cb_copy( widget, ipad ):
+    ipad.clipboard.set_text( ipad.l_text.get_text() )
+    os.system("matchbox-remote -next")
+
+class App( dbus.service.Object ):
     def __init__(self):
-        self.win = gtk.Window()
+        self.dbus_loop = DBusGMainLoop()
+        self.bus = dbus.SessionBus( mainloop = self.dbus_loop )
+        self.bus_name = dbus.service.BusName( 'me.maemo_chinese_input_pad', self.bus )
+        dbus.service.Object.__init__( self, self.bus_name, '/' )
+
+        self.pad = gtk.Dialog()
         self.ipad = InputPad()
-        self.win.add(self.ipad)
+        self.pad.vbox.pack_start(self.ipad)
+        self.pad.set_decorated(False)
         self.ipad.show()
-        self.win.show()
-        self.win.connect( "destroy", cb_quit )
+        self.pad.hide()
+        self.pad.connect( "destroy", self.cb_quit )
+        self.pad.connect( "delete-event", self.cb_delete )
     def run(self):
         gtk.gdk.threads_init()
-        #gtk.gdk.threads_enter()
         gtk.main()
-        #gtk.gdk.threads_leave()
-
+    def cb_delete( self, widget, event ):
+        self.ipad.ipad.backend.reset()
+        self.ipad.ipad.reset()
+        self.ipad.l_text.set_text("")
+        self.pad.hide()
+        return True
+    def cb_quit( self, widget ):
+        #fifo = open( "/tmp/maemo-chinese-input-pad.fifo", "w" )
+        #fifo.write( self.ipad.l_text.get_text() )
+        #fifo.close()
+        gtk.main_quit()
+    @dbus.service.method( 'me.maemo_chinese_input_pad' )
+    def hide( self ):
+        self.pad.hide()
+    @dbus.service.method( 'me.maemo_chinese_input_pad' )
+    def show( self ):
+        self.pad.show()
+        #self.set_opacity(0.5)
+    @dbus.service.method( 'me.maemo_chinese_input_pad' )
+    def quit( self ):
+        gtk.main_quit()
 
 if __name__ == "__main__":
     app = App()
