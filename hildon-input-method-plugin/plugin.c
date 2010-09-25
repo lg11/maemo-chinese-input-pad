@@ -1,80 +1,53 @@
 #include "utils.h"
-#include "sender.h"
-/*#include "dbus_xml.h"*/
+#include "conn.h"
 #include <hildon-input-method/hildon-im-plugin.h>
-#include <fcntl.h>
 
-static GType Plugin_type;
-static GtkWidgetClass* parent_class;
 
 typedef struct{
     GtkWindow parent;
-}Plugin;
+}him_plugin;
+
 typedef struct{
     GtkWindowClass parent;
-    /*DBusGConnection* conn;*/
-}Plugin_class;
+}him_plugin_class;
 
 typedef struct{
     HildonIMUI* ui;
-    /*GtkStyle* style;*/
-    /*PangoLayout *layout;*/
-    dbus_sender* sender;
-    gboolean io_flag;
-}Plugin_private;
+    dbus_conn* conn;
+}him_plugin_private;
 
-/*typedef struct{*/
-    /*GtkWindow parent;*/
-/*}plugin;*/
+#define HIM_PLUGIN_TYPE (him_plugin_get_type())
+#define HIM_PLUGIN( obj ) GTK_CHECK_CAST( obj, HIM_PLUGIN_TYPE, him_plugin )
+#define HIM_PLUGIN_CLASS( klass ) GTK_CHECK_CLASS_CAST( klass, HIM_PLUGIN_TYPE, him_plugin_class )
+#define HIM_PLUGIN_PRIVATE( obj ) G_TYPE_INSTANCE_GET_PRIVATE( obj, HIM_PLUGIN_TYPE, him_plugin_private )
 
-/*#define PLUGIN_TYPE (get_Plugin_type())*/
-#define PLUGIN_TYPE Plugin_type
-#define PLUGIN( obj ) GTK_CHECK_CAST( obj, PLUGIN_TYPE, Plugin )
-#define PLUGIN_CLASS( klass ) GTK_CHECK_CLASS_CAST( klass, Plugin_type, Plugin_class )
-#define PLUGIN_PRIVATE( obj ) G_TYPE_INSTANCE_GET_PRIVATE( obj, Plugin_type, Plugin_private );
+static GType him_plugin_type = 0;
+static GtkWidgetClass* parent_class = NULL;
 
-/*GType get_Plugin_type(void){ return Plugin_type; }*/
+static dbus_conn* conn;
 
-/*static int count_integer;*/
+GType him_plugin_get_type(void){ return him_plugin_type; }
 
-/*gboolean hildon_input_method_plugin_commit( Plugin* p, GString gstr, GError** error ){*/
-gboolean io_func( GIOChannel* source, GIOCondition type, gpointer data ){
-    Plugin* p = PLUGIN(p);
-    Plugin_private* priv;
-    GString* gstr = g_string_new(NULL);
-    priv = PLUGIN_PRIVATE( p );
-    GError* error = NULL;
-    g_io_channel_read_line_string( source, gstr, NULL,  &error );
-    g_debug( "get text %s", gstr->str );
-    hildon_im_ui_send_utf8( priv->ui, gstr->str );
 
-    /*g_string_free( gstr, TRUE );*/
+gboolean him_plugin_request_commit( GObject* plugin, GString gstr ){
+    g_debug( "request commit \"%s\"", gstr.str );
+    him_plugin* p = HIM_PLUGIN( plugin );
+    him_plugin_private* priv;
+    priv = HIM_PLUGIN_PRIVATE( p );
+    hildon_im_ui_send_utf8( priv->ui, gstr.str );
     return TRUE;
 }
 
 static void enable( HildonIMPlugin* plugin, gboolean init ){
     g_debug( "enable" );
-    Plugin_private* priv;
-    priv = PLUGIN_PRIVATE( plugin );
-    priv->sender = dbus_sender_new();
-    dbus_sender_call( priv->sender );
-
-    /*GError* error;*/
-    /*priv->conn = dbus_g_bus_get (DBUS_BUS_SESSION, &error);*/
-    /*if (priv->conn == NULL) {*/
-        /*g_warning("Unable to connect to dbus: %s", error->message);*/
-        /*g_error_free (error);*/
-    /*}*/
-    /*if ( priv->io_flag == FALSE ) {*/
-        /*gint fd;*/
-        /*fd = open("/tmp/him_plugin.fifo", O_RDONLY );*/
-        /*GIOChannel *io_channel;*/
-        /*io_channel = g_io_channel_unix_new( fd );*/
-        /*g_io_add_watch( io_channel, G_IO_IN, io_func, plugin );*/
-        /*hildon_im_ui_send_communication_message( priv->ui, HILDON_IM_CONTEXT_REQUEST_SURROUNDING );*/
-        /*priv->io_flag=TRUE;*/
-    /*}*/
+    him_plugin* p = HIM_PLUGIN( plugin );
+    him_plugin_private* priv;
+    priv = HIM_PLUGIN_PRIVATE( p );
+    priv->conn = conn;
+    dbus_conn_set( priv->conn, (GObject*)p, him_plugin_request_commit );
+    dbus_call_pad_show();
 }
+
 static void disable( HildonIMPlugin* plugin ){
     g_debug( "disable" );
 }
@@ -128,18 +101,7 @@ static void select_region( HildonIMPlugin *plugin, gint start, gint end ){
 }
 
 static void key_event( HildonIMPlugin *plugin, GdkEventType type, guint state, guint keyval, guint hardware_keycode ){
-    if ( type == GDK_KEY_PRESS )
-        g_debug( "key_event, type = press, state = %d, keyval = %d, hardware_keycode = %d", state, keyval, hardware_keycode );
-    else if ( type == GDK_KEY_RELEASE )
-        g_debug( "key_event, type = release, state = %d, keyval = %d, hardware_keycode = %d", state, keyval, hardware_keycode );
-    else
-        g_debug( "key_event, type = unknown, state = %d, keyval = %d, hardware_keycode = %d", state, keyval, hardware_keycode );
-
-    /*Plugin_private* priv;*/
-    /*priv = PLUGIN_PRIVATE( plugin );*/
-    /*hildon_im_ui_send_utf8( priv->ui, "test commit" );*/
-    /*hildon_im_ui_send_communication_message( priv->ui, HILDON_IM_CONTEXT_REQUEST_SURROUNDING );*/
-    /*g_debug( "surrounding = %s", hildon_im_ui_get_surrounding( priv->ui )  );*/
+    g_debug( "key_event" );
 }
 
 static void transition( HildonIMPlugin *plugin, gboolean from ){
@@ -147,12 +109,8 @@ static void transition( HildonIMPlugin *plugin, gboolean from ){
 }
 static void surrounding_received( HildonIMPlugin *plugin, const gchar *surrounding, gint offset ){
     g_debug( "surrounding_received" );
-
-    Plugin_private* priv;
-    priv = PLUGIN_PRIVATE( plugin );
-    /*hildon_im_ui_send_communication_message( priv->ui, HILDON_IM_CONTEXT_REQUEST_SURROUNDING );*/
-    g_debug( "surrounding = %s", surrounding  );
 }
+
 static void button_activated( HildonIMPlugin *plugin, HildonIMButton button, gboolean long_press ){
     g_debug( "button_activated" );
 }
@@ -162,11 +120,11 @@ static void preedit_committed( HildonIMPlugin *plugin, const gchar *committed_pr
 
 //ui interface function
 static void get_property( GObject* object, guint prop_id, GValue* value, GParamSpec* pspec ){
-    Plugin_private* priv;
     g_debug( "get_property" );
+    him_plugin_private* priv;
 
-    g_return_if_fail( GTK_CHECK_TYPE( object, Plugin_type ) );
-    priv = G_TYPE_INSTANCE_GET_PRIVATE( object, Plugin_type, Plugin_private );
+    g_return_if_fail( HIM_PLUGIN(object) );
+    priv = HIM_PLUGIN_PRIVATE(object);
 
     switch ( prop_id ){
         case HILDON_IM_PROP_UI:
@@ -179,74 +137,52 @@ static void get_property( GObject* object, guint prop_id, GValue* value, GParamS
 }
 
 static void set_property( GObject* object, guint prop_id, const GValue* value, GParamSpec* pspec ){
-    Plugin_private* priv;
     g_debug( "set_property" );
+    him_plugin_private* priv;
 
-    g_return_if_fail( GTK_CHECK_TYPE( object, Plugin_type ) );
-    priv = G_TYPE_INSTANCE_GET_PRIVATE( object, Plugin_type, Plugin_private );
+    g_return_if_fail( HIM_PLUGIN(object) );
+    priv = HIM_PLUGIN_PRIVATE(object);
 
     switch ( prop_id ){
         case HILDON_IM_PROP_UI:
-            /*Plugin_log( "set_property_set_ui" );*/
             priv->ui = g_value_get_object( value );
             break;
         default:
             G_OBJECT_WARN_INVALID_PROPERTY_ID( object, prop_id, pspec );
             break;
     }
-    /*priv->io_flag = FALSE;*/
-
 }
 static void finalize( GObject *object ){
     g_debug( "finalize" );
     if ( G_OBJECT_CLASS( parent_class )->finalize )
         G_OBJECT_CLASS( parent_class )->finalize( object );
 }
-static void realize ( GtkWidget *widget )
-{
-    Plugin* p;
-    Plugin_private* priv;
-
+static void realize ( GtkWidget *widget ){
     g_debug( "realize" );
-
-    g_return_if_fail( GTK_CHECK_TYPE( widget, Plugin_type ) );
-    p = PLUGIN( widget );
-    priv = G_TYPE_INSTANCE_GET_PRIVATE( p, Plugin_type, Plugin_private );
-
+    g_return_if_fail( HIM_PLUGIN(widget) );
     GTK_WIDGET_SET_FLAGS( widget, GTK_REALIZED );
 }
 
 static gboolean destroy( GtkWidget* widget, GdkEventAny* event ){
-    g_debug( "destroy_cb" );
+    g_debug( "destroy" );
     //release priv resource in this place
     return FALSE;
 }
 static gboolean expose( GtkWidget* widget, GdkEventExpose* event ){
-    //create priv resource in this place
     g_debug( "expose" );
-    
-    /*Plugin* p;*/
-    /*Plugin_private* priv;*/
-
-    /*g_return_if_fail( GTK_CHECK_TYPE( widget, Plugin_type ) );*/
-    /*p = GTK_CHECK_CAST( widget, Plugin_type, plugin );*/
-    /*priv = G_TYPE_INSTANCE_GET_PRIVATE( p, Plugin_type, Plugin_private );*/
-    
-    
+    //create priv resource in this place
     return TRUE;
 }
 
-static void Plugin_class_init( Plugin_class* klass ){
-    g_debug( "Plugin_class_init" );
-    GObjectClass*  object_class;
-    /*GtkObjectClass* gtk_object_class;*/
+static void him_plugin_class_init( him_plugin_class* klass ){
+    g_debug( "him_plugin_class_init" );
+    GObjectClass* object_class;
     GtkWidgetClass* widget_class;
 
     parent_class = g_type_class_peek_parent( klass );
-    g_type_class_add_private( klass, sizeof( Plugin_private ) );
+    g_type_class_add_private( klass, sizeof(him_plugin_private) );
 
     object_class = G_OBJECT_CLASS( klass );
-    /*gtk_object_class = GTK_OBJECT_CLASS( class );*/
     widget_class = GTK_WIDGET_CLASS( klass );
 
     object_class->set_property = set_property;
@@ -266,51 +202,40 @@ static void Plugin_class_init( Plugin_class* klass ){
                 )
             );
 
-    /*GError* error = NULL;*/
-    /*klass->conn = dbus_g_bus_get (DBUS_BUS_SESSION, &error);*/
-    /*if (klass->conn == NULL) {*/
-        /*g_warning("Unable to connect to dbus: %s", error->message);*/
-        /*g_error_free (error);*/
-    /*}*/
-
-    /*g_debug( "Plugin_init 4" );*/
-    /*dbus_g_object_type_install_info ( Plugin_type, &dbus_glib_plugin_object_info );*/
-
+    /*dbus_g_object_type_install_info( HIM_PLUGIN_TYPE, &dbus_glib_him_plugin_object_info );*/
+    /*dbus_g_object_type_install_info( HIM_PLUGIN_TYPE, &dbus_glib_him_plugin_object_info );*/
 }
 
-static void Plugin_init( Plugin* p ){
-    g_debug( "Plugin_init" );
+static void him_plugin_init( him_plugin* plugin ){
+    g_debug( "him_plugin_init" );
 
-    /*GError* error = NULL;*/
-    /*DBusGProxy *driver_proxy;*/
     /*DBusGConnection* conn;*/
-    /*int request_ret;*/
+    /*DBusGProxy* proxy;*/
+    /*GError *error = NULL;*/
+    /*guint request_name_result;*/
 
     /*conn = dbus_g_bus_get (DBUS_BUS_SESSION, &error);*/
-    /*if (conn == NULL) {*/
-        /*g_warning("Unable to connect to dbus: %s", error->message);*/
-        /*g_error_free (error);*/
-    /*}*/
+    /*if (!conn)*/
+       /*g_debug( "connect to session bus failed. %s", error->message );*/
 
+    /*proxy = dbus_g_proxy_new_for_name( conn, "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus" );*/
 
-    /*Register DBUS path*/
-    /*dbus_g_connection_register_g_object (conn, "/me/hildon_input_method_plugin", G_OBJECT (p));*/
+    /*if (!dbus_g_proxy_call ( proxy, "RequestName", &error, G_TYPE_STRING, "me.hildon_input_method_plugin", G_TYPE_UINT, 0, G_TYPE_INVALID, G_TYPE_UINT, &request_name_result, G_TYPE_INVALID))*/
+        /*g_debug( "acquire me.hildon_input_method_plugin failed. %s", error->message );*/
 
-    /* Register the service name, the constant here are defined in dbus-glib-bindings.h */
-    /*driver_proxy = dbus_g_proxy_new_for_name (klass->connection, DBUS_SERVICE_DBUS, DBUS_PATH_DBUS, DBUS_INTERFACE_DBUS);*/
-    /*driver_proxy = dbus_g_proxy_new_for_name( conn, "me.hildon_input_method_plugin", "/", "me.hildon_input_method_plugin" );*/
-    /*if (!dbus_g_proxy_call( driver_proxy, "RequestName", &error, G_TYPE_STRING, "me.hildon_input_method_plugin", G_TYPE_UINT, 0, G_TYPE_INVALID, G_TYPE_UINT, &request_ret, G_TYPE_INVALID)) {*/
-        /*g_warning("Unable to register service: %s", error->message);*/
-        /*g_error_free (error);*/
-    /*}*/
-    /*g_object_unref (driver_proxy);*/
+    /*dbus_g_connection_register_g_object ( conn, "/", G_OBJECT(plugin) );*/
+
+    /*g_debug( "guid. %s", conn->object );*/
+
+    /*plugin->conn = conn;*/
 }
 
-GtkWidget* Plugin_widget_new( HildonIMUI* widget ){
-    g_debug( "Plugin_widget_new" );
-    return g_object_new( Plugin_type, HILDON_IM_PROP_UI_DESCRIPTION, widget, NULL );
+GtkWidget* him_plugin_widget_new( HildonIMUI* widget ){
+    g_debug( "him_plugin_widget_new" );
+    return g_object_new( HIM_PLUGIN_TYPE, HILDON_IM_PROP_UI_DESCRIPTION, widget, NULL );
 }
-static void Plugin_interface_init( HildonIMPluginIface* iface ){
+
+static void him_plugin_interface_init( HildonIMPluginIface* iface ){
     g_debug( "interface_init" );
     iface->enable = enable;
     iface->disable = disable;
@@ -339,23 +264,24 @@ static void Plugin_interface_init( HildonIMPluginIface* iface ){
 void module_init( GTypeModule* module ){
     g_debug( "module_init" );
     static const GTypeInfo type_info = {
-        sizeof( Plugin_class ),
+        sizeof( him_plugin_class ),
         NULL, /* base_init */
         NULL, /* base_finalize */
-        (GClassInitFunc) Plugin_class_init,
+        (GClassInitFunc) him_plugin_class_init,
         NULL, /* class_finalize */
         NULL, /* class_data */
-        sizeof( Plugin ),
+        sizeof( him_plugin ),
         0, /* n_preallocs */
-        (GInstanceInitFunc) Plugin_init,
+        (GInstanceInitFunc) him_plugin_init,
     };
-    static const GInterfaceInfo Plugin_info = {
-        (GInterfaceInitFunc) Plugin_interface_init,
+    static const GInterfaceInfo him_plugin_info = {
+        (GInterfaceInitFunc) him_plugin_interface_init,
         NULL, /* interface_finalize */
         NULL, /* interface_data */
     };
-    Plugin_type = g_type_module_register_type( module, GTK_TYPE_WIDGET, "Plugin", &type_info, 0 );
-    g_type_module_add_interface( module, Plugin_type, HILDON_IM_TYPE_PLUGIN, &Plugin_info );
+    him_plugin_type = g_type_module_register_type( module, GTK_TYPE_WIDGET, "him_plugin", &type_info, 0 );
+    g_type_module_add_interface( module, HIM_PLUGIN_TYPE, HILDON_IM_TYPE_PLUGIN, &him_plugin_info );
+    conn = dbus_conn_new();
 }
 
 void module_exit( void ){
@@ -365,10 +291,11 @@ void module_exit( void ){
 HildonIMPlugin* module_create( HildonIMUI* widget ){
     g_debug( "module_create" );
     /*count_integer = 0;*/
-    return HILDON_IM_PLUGIN( Plugin_widget_new( widget ) );
+    return HILDON_IM_PLUGIN( him_plugin_widget_new( widget ) );
 }
 
-const HildonIMPluginInfo* hildon_im_Plugin_get_info( void ){
+const HildonIMPluginInfo* hildon_im_him_plugin_get_info( void ){
+    g_debug( "hildon_im_him_plugin_get_info" );
     static const HildonIMPluginInfo info = 
     {
         "MAEMO-CHINESE-INPUT-PAD-PLUGIN",
@@ -386,15 +313,13 @@ const HildonIMPluginInfo* hildon_im_Plugin_get_info( void ){
         HILDON_IM_DEFAULT_HEIGHT,
         HILDON_IM_TRIGGER_NONE
     };
-    g_debug( "hildon_im_Plugin_get_info" );
     return &info;
 }
 
-gchar** hildon_im_Plugin_get_available_languages( gboolean* free ){
+gchar** hildon_im_him_plugin_get_available_languages( gboolean* free ){
+    g_debug( "him_plugin_get_available_languages" );
     static gchar* list[] = { "zh_CN", "en_GB", "en_US", NULL };
-    g_debug( "hildon_im_Plugin_get_available_languages" );
     *free = FALSE;
     return list;
 }
-
 

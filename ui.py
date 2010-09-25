@@ -286,7 +286,7 @@ class InputPad( gtk.Frame ):
         self.cp_b.set_size_request( 200, 90 )
         self.layout.put( self.cp_b, 70, 300 )
         self.cp_b.show()
-        #self.cp_b.hide()
+        self.cp_b.hide()
         self.cp_b.connect( "clicked", cb_copy, self )
 
         self.ipad.show()
@@ -317,6 +317,10 @@ class App( dbus.service.Object ):
         gtk.gdk.threads_init()
         gtk.main()
     def cb_delete( self, widget, event ):
+        bus = dbus.SessionBus()
+        service = bus.get_object('me.him_plugin.dbus_conn', '/')
+        method = service.get_dbus_method( 'request_commit', 'me.him_plugin.dbus_conn' )
+        method( self.ipad.l_text.get_text() )
         self.ipad.ipad.backend.reset()
         self.ipad.ipad.reset()
         self.ipad.l_text.set_text("")

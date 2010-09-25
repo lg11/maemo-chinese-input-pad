@@ -1,0 +1,3 @@
+[D-BUS Service]
+Name=me.maemo_chinese_input_pad
+Exec= /home/user/workspace/im/run.sh
