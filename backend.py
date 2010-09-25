@@ -206,24 +206,12 @@ class QueryThread( threading.Thread ):
             #print "start code = " + code
             rs = self.cur.execute( self.sql_sentence[i][j], t )
             rl = rs.fetchall()
-            #print type(rl)
 
-            #hz_rl = []
-            #if i > 6 :
-                #pass
-            #else:
-                #for r in rl:
-                    #if r[cache.IDX_LENGTH] == 1 :
-                        #hz_rl.append(r) 
 
             if len(rl) > 0:
                 cache.list[i] = rl
             else:
                 cache.list[i] = None
-            #if len(hz_rl) > 0:
-                #cache.hanzi_list[i] = hz_rl
-            #else:
-                #cache.hanzi_list[i] = None
             cache.flag[i] = QueryCache.FLAG_VAILD
             #print "end"
 
@@ -266,6 +254,7 @@ class Cand():
     """
     候选词列表类
     """
+    cand_length = 6
     def __init__( self, backend ):
         """
         @backend 输入法后端
@@ -288,28 +277,20 @@ class Cand():
     def update(self):
         rs = self.backend.cache.list[self.query_index]
         if rs:
-            if self.page_index * 6 >= len( rs ):
-                self.list[0] = None
-                self.list[1] = None
-                self.list[2] = None
-                self.list[3] = None
-                self.list[4] = None
-                self.list[5] = None
+            if self.page_index * self.cand_length >= len( rs ):
+                for i in range( self.cand_length ):
+                    self.list[i] = None
             else:
-                for i in range(6):
-                    idx = self.page_index * 6 + i
+                for i in range( self.cand_length ):
+                    idx = self.page_index * self.cand_length + i
                     if idx < len(rs):
                         #print rs[idx][1]
                         self.list[i] = rs[ idx ]
                     else:
                         self.list[i] = None
         else:
-            self.list[0] = None
-            self.list[1] = None
-            self.list[2] = None
-            self.list[3] = None
-            self.list[4] = None
-            self.list[5] = None
+            for i in range( self.cand_length ):
+                self.list[i] = None
     def shorter(self):
         #print "shorter"
         if self.query_index > 0 :
@@ -335,7 +316,7 @@ class Cand():
         rs = self.backend.cache.list[self.query_index]
         if rs :
             idx = self.page_index + 1
-            if idx * 6 >= len( rs ):
+            if idx * self.cand_length >= len( rs ):
                 pass
             else:
                 self.page_index = idx
@@ -377,7 +358,7 @@ class Cand():
     def select( self, index ):
         if self.list[index] != None and self.list[index][ QueryCache.IDX_LENGTH ] > 0:
             self.backend.selected.append( self.list[index] )
-            idx = self.page_index * 6 + index
+            idx = self.page_index * self.cand_length + index
             if idx < 3:
                 idx = 0
             else:
@@ -393,7 +374,7 @@ class Cand():
             request = OperateThread.OPERATE_REQUEST_DELETE
             data = [ request, item[ QueryCache.IDX_CODE ] , item[ QueryCache.IDX_KEY ] ]
             self.backend.conn.operate(data)
-            idx = self.page_index * 6 + index
+            idx = self.page_index * self.cand_length + index
             item = ( 0, "", "", "", 0, 0 )
             self.backend.cache.list[ self.query_index ][idx] = item
             self.list[index] = item

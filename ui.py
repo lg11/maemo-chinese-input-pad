@@ -8,13 +8,11 @@ import dbus
 import dbus.service
 from dbus.mainloop.glib import DBusGMainLoop
 
-import os
-
 from backend import Backend, QueryCache
 from ui_base import LabelButton
 from ui_base import LongPressButton
 
-def cb_backspace( widget, ipad ):
+def cb_button_0( widget, ipad ):
     if widget.enable_flag :
         #print widget.enable_flag
         if ipad.mode == ipad.MODE_INPUT:
@@ -27,11 +25,13 @@ def cb_backspace( widget, ipad ):
                 ipad.backend.cand.reset_page()
                 ipad.backend.cand.update()
             else:
-                text = ipad.text_label.get_text()
-                if len(text) > 0:
-                    text = text.decode('utf8')
-                    text = text[:-1]
-                    ipad.text_label.set_text(text)
+                #text = ipad.text_buffer.backspace( ipad.text_buffer.get_end_iter(), False, False )
+                iter_here = ipad.text_buffer.get_iter_at_mark(ipad.text_buffer.get_insert())
+                text = ipad.text_buffer.backspace( iter_here, True, True )
+                #if len(text) > 0:
+                    #text = text.decode('utf8')
+                    #text = text[:-1]
+                    #ipad.text_view.get_buffer().set_text(text)
         elif ipad.mode == ipad.MODE_SELECT:
             #print "shorter"
             ipad.backend.cand.shorter()
@@ -57,10 +57,11 @@ def cb_npad_longpress( widget, ipad ):
             ipad.update()
     #print "longpressed"
 
-def cb_npad_click( widget, ipad, data ):
+def cb_npad_click( widget, ipad ):
+    index = widget.index
     if widget.longpressed_flag != True :
         if ipad.mode == ipad.MODE_INPUT:
-            if data == "1":
+            if index == 0:
                 if len(ipad.backend.code) == 0:
                     ipad.mode = ipad.MODE_PUNC
                     ipad.update()
@@ -68,53 +69,33 @@ def cb_npad_click( widget, ipad, data ):
                     ipad.mode = ipad.MODE_SELECT
                     ipad.update()
             else:
-                ipad.backend.append_code( data )
+                ipad.backend.append_code( str(index+1) )
                 ipad.update()
         elif ipad.mode == ipad.MODE_SELECT:
-            if data == "1":
-                ipad.select( 0 )
-            elif data == "2":
-                ipad.select( 1 )
-            elif data == "3":
-                ipad.select( 2 )
-            elif data == "4":
-                ipad.select( 3 )
-            elif data == "5":
-                ipad.select( 4 )
-            elif data == "6":
-                ipad.select( 5 )
-            elif data == "9":
+            if index in range(6):
+                ipad.select( index )
+            elif index == 8:
                 ipad.backend.cand.next_page()
                 ipad.backend.cand.update()
                 ipad.update()
-            elif data == "7":
+            elif index == 6:
                 ipad.backend.cand.prev_page()
                 ipad.backend.cand.update()
                 ipad.update()
-            elif data == "8":
+            elif index == 7:
                 ipad.commit()
             else:
                 pass
         elif ipad.mode == ipad.MODE_PUNC:
-            if data == "1":
-                ipad.commit_punc( 0 )
-            elif data == "2":
-                ipad.commit_punc( 1 )
-            elif data == "3":
-                ipad.commit_punc( 2 )
-            elif data == "4":
-                ipad.commit_punc( 3 )
-            elif data == "5":
-                ipad.commit_punc( 4 )
-            elif data == "6":
-                ipad.commit_punc( 5 )
-            elif data == "9":
+            if index in range(6):
+                ipad.commit_punc( index )
+            elif index == 8:
                 ipad.next_punc()
                 ipad.update()
-            elif data == "7":
+            elif index == 6:
                 ipad.prev_punc()
                 ipad.update()
-            elif data == "8":
+            elif index == 7:
                 pass
             else:
                 pass
@@ -123,29 +104,39 @@ def cb_npad_click( widget, ipad, data ):
 
 class NumPad( gtk.Frame ):
     button_label = [ \
-            ["1","2","3","4","5","6","7","8","9","","",""]\
+            ["1","2","3","4","5","6","7","8","9","0"]\
             ,\
-            ["1","2","3","4","5","6","7","8","9","","",""]\
+            ["1","2","3","4","5","6","7","8","9","0"]\
             ]
+    button_width = 145
+    button_height = 110
+    button_width_0 = button_width * 2
+    button_height_0 = 90
     def __init__( self, ipad ):
         gtk.Frame.__init__(self)
         self.ipad = ipad
         self.button = []
-        t = gtk.Table( 3, 3 )
-        t.set_row_spacings(0)
-        t.set_col_spacings(0)
-        self.add(t)
+        self.layout = gtk.Fixed()
+        self.add(self.layout)
         for i in range(3):
             for j in range(3):
                 b = LabelButton(self.button_label[0][i*3+j])
                 b.index = i*3+j
-                b.set_size_request(145,110)
-                b.connect( "clicked", cb_npad_click, ipad, self.button_label[0][i*3+j] )
+                b.set_size_request( self.button_width, self.button_height )
+                b.connect( "clicked", cb_npad_click, ipad  )
                 b.connect( "longpressed", cb_npad_longpress, ipad )
-                t.attach( b, j, j+1, i, i+1 )
+                self.layout.put( b, self.button_width * j, self.button_height * i )
                 b.show()
                 self.button.append(b)
-        t.show()
+        b = LabelButton(self.button_label[0][9])
+        b.index = 9
+        b.set_size_request( self.button_width_0, self.button_height_0 )
+        b.connect( "clicked", cb_button_0, ipad )
+        b.show()
+        self.layout.put( b, 0, self.button_height * 3 )
+        self.button.append(b)
+
+        self.layout.show()
     def update(self):
         cand = self.ipad.backend.cand
         if self.ipad.mode == self.ipad.MODE_PUNC:
@@ -162,43 +153,45 @@ class ChineseInputPad( gtk.Frame ):
     punc_list = [ \
             ["，","。","？","“","”","……"]\
             ,\
-            ["！","（","）","～","《","》"]\
+            ["；","：","！","（","）","～"]\
+            ,\
+            ["、","；","！","《","》","～"]\
             ]
+    punc_page_count = 3
     MODE_INPUT = 0
     MODE_SELECT = 1
     MODE_PUNC = 2
-    def __init__( self, text_label ):
+    height_hint = 5
+    width_hint = 35
+    label_width = 800 - NumPad.button_width * 3 - width_hint
+    label_height = 40
+    def __init__( self, text_view ):
         gtk.Frame.__init__(self)
         self.backend = Backend(self)
         self.layout = gtk.Fixed()
         self.npad = NumPad( self )
         self.add(self.layout)
         #self.layout.put(self.npad,0,90)
-        self.layout.put(self.npad,0,90)
+        self.layout.put( self.npad, self.label_width, self.height_hint )
         self.npad.show()
         self.layout.show()
 
         self.l_hanzi = gtk.Label()
         self.l_pinyin = gtk.Label()
-        self.l_hanzi.set_size_request(290,50)
-        self.l_pinyin.set_size_request(290,50)
-        self.layout.put( self.l_pinyin, 0, 5 )
-        self.layout.put( self.l_hanzi, 0, 40 )
+        self.l_hanzi.set_size_request( self.label_width, self.label_height )
+        self.l_pinyin.set_size_request( self.label_width, self.label_height )
+        self.layout.put( self.l_pinyin, 0, self.height_hint )
+        self.layout.put( self.l_hanzi, 0, self.label_height + self.height_hint )
         self.l_hanzi.set_selectable(True)
         self.l_pinyin.set_selectable(True)
         self.l_pinyin.show()
         self.l_hanzi.show()
 
-        self.bs_b = LabelButton("退格")
-        self.bs_b.set_size_request( 145, 75 )
-        self.layout.put( self.bs_b, 290, 10 )
-        self.bs_b.show()
-        self.bs_b.connect( "clicked", cb_backspace, self )
-
         self.mode = self.MODE_INPUT
         self.punc_index = 0
 
-        self.text_label = text_label
+        self.text_view = text_view
+        self.text_buffer = self.text_view.get_buffer()
     def update(self):
         cand = self.backend.cand
         cand_py = ""
@@ -244,10 +237,12 @@ class ChineseInputPad( gtk.Frame ):
         self.update()
     def commit(self):
         text = self.backend.cand.commit()
-        self.text_label.set_text( self.text_label.get_text() + text )
+        #self.text_buffer.set_text( self.text_buffer.get_text( self.text_buffer.get_start_iter(), self.text_buffer.get_end_iter() ) + text )
+        self.text_buffer.insert_at_cursor( text )
         self.reset()
     def commit_punc( self, i ):
-        self.text_label.set_text( self.text_label.get_text() + self.punc_list[self.punc_index][i] )
+        #self.text_buffer.set_text( self.text_buffer.get_text( self.text_buffer.get_start_iter(), self.text_buffer.get_end_iter() ) + self.punc_list[self.punc_index][i] )
+        self.text_buffer.insert_at_cursor( self.punc_list[self.punc_index][i] )
         self.reset()
     def next_punc(self):
         self.punc_index = self.punc_index + 1
@@ -264,39 +259,40 @@ class InputPad( gtk.Frame ):
     def __init__(self):
         gtk.Frame.__init__(self)
         self.layout = gtk.Fixed()
-        self.l_text = gtk.Label()
-        self.ipad = ChineseInputPad(self.l_text)
-        self.layout.put(self.ipad,330,0)
+        self.text_view = gtk.TextView()
+        self.text_view.set_editable( False )
+        self.ipad = ChineseInputPad(self.text_view)
+        self.layout.put(self.ipad,0,0)
         self.add(self.layout)
 
-        self.l_text.set_size_request(320,240)
-        self.l_text.get_layout().set_wrap(pango.WRAP_CHAR)
-        self.l_text.set_line_wrap(True)
-        self.l_text.set_width_chars(30)
-        self.l_text.set_text("")
-        self.l_text.show()
-        self.layout.put( self.l_text, 10, 10 )
+        self.text_view.set_size_request( ChineseInputPad.label_width - 5, 390 - ChineseInputPad.label_height * 2 + ChineseInputPad.height_hint )
+        self.text_view.set_wrap_mode(gtk.WRAP_CHAR)
+        #self.text_view.set_line_wrap(True)
+        #self.text_view.set_width_chars(30)
+        self.text_buffer = self.text_view.get_buffer()
+        self.text_buffer.set_text("")
+        self.text_view.show()
+        self.layout.put( self.text_view, 0, ChineseInputPad.label_height * 2 + ChineseInputPad.height_hint )
 
         l_empty = gtk.Label()
         self.layout.put( l_empty, 0, 0 )
         l_empty.show()
         l_empty.set_selectable(True)
 
-        self.cp_b = gtk.Button("复制到剪切板")
-        self.cp_b.set_size_request( 200, 90 )
-        self.layout.put( self.cp_b, 70, 300 )
-        self.cp_b.show()
-        self.cp_b.hide()
-        self.cp_b.connect( "clicked", cb_copy, self )
+        #self.cp_b = gtk.Button("复制到剪切板")
+        #self.cp_b.set_size_request( 200, 90 )
+        #self.layout.put( self.cp_b, 70, 300 )
+        #self.cp_b.show()
+        #self.cp_b.hide()
+        #self.cp_b.connect( "clicked", cb_copy, self )
 
         self.ipad.show()
         self.layout.show()
 
         self.clipboard = gtk.clipboard_get(gtk.gdk.SELECTION_CLIPBOARD)
 
-def cb_copy( widget, ipad ):
-    ipad.clipboard.set_text( ipad.l_text.get_text() )
-    os.system("matchbox-remote -next")
+#def cb_copy( widget, ipad ):
+    #ipad.clipboard.set_text( ipad.text_view.get_buffer().get_text() )
 
 class App( dbus.service.Object ):
     def __init__(self):
@@ -320,15 +316,15 @@ class App( dbus.service.Object ):
         bus = dbus.SessionBus()
         service = bus.get_object('me.him_plugin.dbus_conn', '/')
         method = service.get_dbus_method( 'request_commit', 'me.him_plugin.dbus_conn' )
-        method( self.ipad.l_text.get_text() )
+        method( self.ipad.text_buffer.get_text( self.ipad.text_buffer.get_start_iter(), self.ipad.text_buffer.get_end_iter() ) )
         self.ipad.ipad.backend.reset()
         self.ipad.ipad.reset()
-        self.ipad.l_text.set_text("")
+        self.ipad.text_view.get_buffer().set_text("")
         self.pad.hide()
         return True
     def cb_quit( self, widget ):
         #fifo = open( "/tmp/maemo-chinese-input-pad.fifo", "w" )
-        #fifo.write( self.ipad.l_text.get_text() )
+        #fifo.write( self.ipad.text_view.get_buffer().get_text() )
         #fifo.close()
         gtk.main_quit()
     @dbus.service.method( 'me.maemo_chinese_input_pad' )
