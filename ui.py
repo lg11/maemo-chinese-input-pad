@@ -27,7 +27,11 @@ def cb_button_0( widget, ipad ):
             else:
                 #text = ipad.text_buffer.backspace( ipad.text_buffer.get_end_iter(), False, False )
                 iter_here = ipad.text_buffer.get_iter_at_mark(ipad.text_buffer.get_insert())
-                text = ipad.text_buffer.backspace( iter_here, True, True )
+                if iter_here.equal( ipad.text_buffer.get_start_iter() ):
+                    iter_here.forward_char()
+                    text = ipad.text_buffer.backspace( iter_here, True, True )
+                else:
+                    text = ipad.text_buffer.backspace( iter_here, True, True )
                 #if len(text) > 0:
                     #text = text.decode('utf8')
                     #text = text[:-1]
