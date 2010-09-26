@@ -26,26 +26,30 @@ static GtkWidgetClass* parent_class = NULL;
 
 static dbus_conn* conn;
 
+static gint search_count;
+static gint offset_count;
+static const gchar* empty_str;
+static gchar* surrounding_anti_eat_cache;
+static gchar* surrounding_cache;
+
 GType him_plugin_get_type(void){ return him_plugin_type; }
 
 
 gboolean him_plugin_request_commit( GObject* plugin, GString gstr ){
-    g_debug( "request commit \"%s\"", gstr.str );
-    him_plugin* p = HIM_PLUGIN( plugin );
-    him_plugin_private* priv;
-    priv = HIM_PLUGIN_PRIVATE( p );
-    hildon_im_ui_send_utf8( priv->ui, gstr.str );
+    g_debug( "him_plugin_request_commit \"%s\"", gstr.str );
+    him_plugin_private* priv = HIM_PLUGIN_PRIVATE( plugin );
+    /*hildon_im_ui_send_utf8( priv->ui, gstr.str );*/
+    hildon_im_ui_send_surrounding_content( priv->ui, gstr.str );
     return TRUE;
 }
 
 static void enable( HildonIMPlugin* plugin, gboolean init ){
     g_debug( "enable" );
-    him_plugin* p = HIM_PLUGIN( plugin );
-    him_plugin_private* priv;
-    priv = HIM_PLUGIN_PRIVATE( p );
+    him_plugin_private* priv = HIM_PLUGIN_PRIVATE( plugin );
     priv->conn = conn;
-    dbus_conn_set( priv->conn, (GObject*)p, him_plugin_request_commit );
-    dbus_call_pad_show();
+    dbus_conn_set( priv->conn, (GObject*)plugin, him_plugin_request_commit );
+    /*hildon_im_ui_send_communication_message( priv->ui, HILDON_IM_CONTEXT_SURROUNDING_MODE );*/
+    hildon_im_ui_send_communication_message( priv->ui, HILDON_IM_CONTEXT_REQUEST_SURROUNDING_FULL );
 }
 
 static void disable( HildonIMPlugin* plugin ){
@@ -108,7 +112,75 @@ static void transition( HildonIMPlugin *plugin, gboolean from ){
     g_debug( "transition" );
 }
 static void surrounding_received( HildonIMPlugin *plugin, const gchar *surrounding, gint offset ){
-    g_debug( "surrounding_received" );
+    g_debug( "surrounding_received %s", surrounding );
+    him_plugin_private* priv = HIM_PLUGIN_PRIVATE( plugin );
+    gchar* tmp1;
+    gchar* tmp2;
+    g_debug( "him_plugin_surrounding_offset \"%d\"", offset );
+    if ( search_count == 0 ){
+        if ( offset == 0 ){
+            g_debug("anti_eat on head!");
+            search_count = 0;
+            g_debug("anti_eat show \"%s\" , \"%s\"", "", surrounding );
+            dbus_call_pad_show( surrounding, "" );
+            /*hildon_im_ui_send_surrounding_content( priv->ui, surrounding );*/
+        }
+        else{
+            g_debug("anti_eat search start!");
+            search_count++;
+            surrounding_anti_eat_cache = g_strdup( empty_str );
+            surrounding_cache = g_strdup( surrounding );
+            offset_count = offset;
+            g_debug("anti_eat show \"%s\" , \"%s\"", surrounding_anti_eat_cache, surrounding_cache );
+            hildon_im_ui_send_surrounding_offset( priv->ui, TRUE, -offset );
+            hildon_im_ui_send_communication_message( priv->ui, HILDON_IM_CONTEXT_REQUEST_SURROUNDING_FULL );
+            g_debug("anti_eat show offset \"%d\"", offset_count );
+        }
+    }
+    else{
+        if ( offset == 0 ){
+            g_debug("anti_eat search head is empty line!");
+            search_count = 0;
+            /*tmp1 = g_strdup( surrounding );*/
+            /*tmp1[1] = '\0';*/
+            /*tmp2 = g_strconcat( tmp1, surrounding_anti_eat_cache, NULL );*/
+            /*g_free( surrounding_anti_eat_cache ); g_free( tmp1 );*/
+            /*surrounding_anti_eat_cache = tmp2;*/
+            g_debug("anti_eat show \"%s\" , \"%s\"", surrounding_anti_eat_cache, surrounding_cache );
+            hildon_im_ui_send_surrounding_offset( priv->ui, TRUE, offset_count );
+            dbus_call_pad_show( surrounding_cache, surrounding_anti_eat_cache );
+        }
+        else if ( offset == 1 ){
+            search_count++;
+            g_debug("anti_eat find empty line!");
+            offset_count += offset;
+            tmp1 = g_strdup( surrounding );
+            tmp1[1] = '\0';
+            tmp2 = g_strconcat( tmp1, surrounding_anti_eat_cache, NULL );
+            g_free( surrounding_anti_eat_cache ); g_free( tmp1 );
+            surrounding_anti_eat_cache = tmp2;
+            g_debug("anti_eat show \"%s\" , \"%s\"", surrounding_anti_eat_cache, surrounding_cache );
+            hildon_im_ui_send_surrounding_offset( priv->ui, TRUE, -offset );
+            hildon_im_ui_send_communication_message( priv->ui, HILDON_IM_CONTEXT_REQUEST_SURROUNDING_FULL );
+        }
+        else{
+            search_count = 0;
+            g_debug("anti_eat find prev line!");
+            tmp1 = g_strdup( surrounding );
+            gchar* ptr = g_utf8_offset_to_pointer(tmp1, offset);
+            *ptr = '\0';
+            tmp2 = g_strconcat( tmp1, surrounding_anti_eat_cache, NULL );
+            g_free( surrounding_anti_eat_cache ); g_free( tmp1 );
+            surrounding_anti_eat_cache = tmp2;
+            hildon_im_ui_send_surrounding_offset( priv->ui, TRUE, offset_count );
+            g_debug("anti_eat show \"%s\" , \"%s\"", surrounding_anti_eat_cache, surrounding_cache );
+            g_debug("anti_eat show offset \"%d\"", offset_count );
+            dbus_call_pad_show( surrounding_cache, surrounding_anti_eat_cache );
+        }
+    }
+    /*dbus_call_pad_show( surrounding );*/
+    /*hildon_im_ui_send_surrounding_offset( priv->ui, TRUE, 6 );*/
+    /*hildon_im_ui_send_surrounding_content( priv->ui, "" );*/
 }
 
 static void button_activated( HildonIMPlugin *plugin, HildonIMButton button, gboolean long_press ){
@@ -201,33 +273,10 @@ static void him_plugin_class_init( him_plugin_class* klass ){
                 G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY
                 )
             );
-
-    /*dbus_g_object_type_install_info( HIM_PLUGIN_TYPE, &dbus_glib_him_plugin_object_info );*/
-    /*dbus_g_object_type_install_info( HIM_PLUGIN_TYPE, &dbus_glib_him_plugin_object_info );*/
 }
 
 static void him_plugin_init( him_plugin* plugin ){
     g_debug( "him_plugin_init" );
-
-    /*DBusGConnection* conn;*/
-    /*DBusGProxy* proxy;*/
-    /*GError *error = NULL;*/
-    /*guint request_name_result;*/
-
-    /*conn = dbus_g_bus_get (DBUS_BUS_SESSION, &error);*/
-    /*if (!conn)*/
-       /*g_debug( "connect to session bus failed. %s", error->message );*/
-
-    /*proxy = dbus_g_proxy_new_for_name( conn, "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus" );*/
-
-    /*if (!dbus_g_proxy_call ( proxy, "RequestName", &error, G_TYPE_STRING, "me.hildon_input_method_plugin", G_TYPE_UINT, 0, G_TYPE_INVALID, G_TYPE_UINT, &request_name_result, G_TYPE_INVALID))*/
-        /*g_debug( "acquire me.hildon_input_method_plugin failed. %s", error->message );*/
-
-    /*dbus_g_connection_register_g_object ( conn, "/", G_OBJECT(plugin) );*/
-
-    /*g_debug( "guid. %s", conn->object );*/
-
-    /*plugin->conn = conn;*/
 }
 
 GtkWidget* him_plugin_widget_new( HildonIMUI* widget ){
@@ -281,7 +330,12 @@ void module_init( GTypeModule* module ){
     };
     him_plugin_type = g_type_module_register_type( module, GTK_TYPE_WIDGET, "him_plugin", &type_info, 0 );
     g_type_module_add_interface( module, HIM_PLUGIN_TYPE, HILDON_IM_TYPE_PLUGIN, &him_plugin_info );
+
     conn = dbus_conn_new();
+    
+    search_count = 0;
+    offset_count = 0;
+    empty_str = "";
 }
 
 void module_exit( void ){
@@ -304,8 +358,8 @@ const HildonIMPluginInfo* hildon_im_him_plugin_get_info( void ){
         NULL,
         FALSE,
         FALSE,
-        HILDON_IM_TYPE_OTHERS,
-        HILDON_IM_GROUP_CJK,
+        HILDON_IM_TYPE_SPECIAL_STANDALONE,
+        HILDON_IM_GROUP_CUSTOM,
         HILDON_IM_DEFAULT_PLUGIN_PRIORITY,
         NULL,
         NULL,
