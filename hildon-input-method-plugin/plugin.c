@@ -26,11 +26,8 @@ static GtkWidgetClass* parent_class = NULL;
 
 static dbus_conn* conn;
 
-static gint search_count;
-static gint offset_count;
-static const gchar* empty_str;
-static gchar* surrounding_anti_eat_cache;
-static gchar* surrounding_cache;
+static gint cursor_offset;
+static gint surround_length;
 
 GType him_plugin_get_type(void){ return him_plugin_type; }
 
@@ -39,7 +36,12 @@ gboolean him_plugin_request_commit( GObject* plugin, GString gstr ){
     g_debug( "him_plugin_request_commit \"%s\"", gstr.str );
     him_plugin_private* priv = HIM_PLUGIN_PRIVATE( plugin );
     /*hildon_im_ui_send_utf8( priv->ui, gstr.str );*/
-    hildon_im_ui_send_surrounding_content( priv->ui, gstr.str );
+    hildon_im_ui_send_surrounding_offset( priv->ui, TRUE, surround_length - cursor_offset );
+    gint i;
+    for( i = 0; i < surround_length; i++ ){
+        hildon_im_ui_send_communication_message( priv->ui, HILDON_IM_CONTEXT_HANDLE_BACKSPACE );
+    }
+    hildon_im_ui_send_utf8( priv->ui, gstr.str );
     return TRUE;
 }
 
@@ -114,72 +116,11 @@ static void transition( HildonIMPlugin *plugin, gboolean from ){
 static void surrounding_received( HildonIMPlugin *plugin, const gchar *surrounding, gint offset ){
     g_debug( "surrounding_received %s", surrounding );
     him_plugin_private* priv = HIM_PLUGIN_PRIVATE( plugin );
-    gchar* tmp1;
-    gchar* tmp2;
-    g_debug( "him_plugin_surrounding_offset \"%d\"", offset );
-    if ( search_count == 0 ){
-        if ( offset == 0 ){
-            g_debug("anti_eat on head!");
-            search_count = 0;
-            g_debug("anti_eat show \"%s\" , \"%s\"", "", surrounding );
-            dbus_call_pad_show( surrounding, "" );
-            /*hildon_im_ui_send_surrounding_content( priv->ui, surrounding );*/
-        }
-        else{
-            g_debug("anti_eat search start!");
-            search_count++;
-            surrounding_anti_eat_cache = g_strdup( empty_str );
-            surrounding_cache = g_strdup( surrounding );
-            offset_count = offset;
-            g_debug("anti_eat show \"%s\" , \"%s\"", surrounding_anti_eat_cache, surrounding_cache );
-            hildon_im_ui_send_surrounding_offset( priv->ui, TRUE, -offset );
-            hildon_im_ui_send_communication_message( priv->ui, HILDON_IM_CONTEXT_REQUEST_SURROUNDING_FULL );
-            g_debug("anti_eat show offset \"%d\"", offset_count );
-        }
-    }
-    else{
-        if ( offset == 0 ){
-            g_debug("anti_eat search head is empty line!");
-            search_count = 0;
-            /*tmp1 = g_strdup( surrounding );*/
-            /*tmp1[1] = '\0';*/
-            /*tmp2 = g_strconcat( tmp1, surrounding_anti_eat_cache, NULL );*/
-            /*g_free( surrounding_anti_eat_cache ); g_free( tmp1 );*/
-            /*surrounding_anti_eat_cache = tmp2;*/
-            g_debug("anti_eat show \"%s\" , \"%s\"", surrounding_anti_eat_cache, surrounding_cache );
-            hildon_im_ui_send_surrounding_offset( priv->ui, TRUE, offset_count );
-            dbus_call_pad_show( surrounding_cache, surrounding_anti_eat_cache );
-        }
-        else if ( offset == 1 ){
-            search_count++;
-            g_debug("anti_eat find empty line!");
-            offset_count += offset;
-            tmp1 = g_strdup( surrounding );
-            tmp1[1] = '\0';
-            tmp2 = g_strconcat( tmp1, surrounding_anti_eat_cache, NULL );
-            g_free( surrounding_anti_eat_cache ); g_free( tmp1 );
-            surrounding_anti_eat_cache = tmp2;
-            g_debug("anti_eat show \"%s\" , \"%s\"", surrounding_anti_eat_cache, surrounding_cache );
-            hildon_im_ui_send_surrounding_offset( priv->ui, TRUE, -offset );
-            hildon_im_ui_send_communication_message( priv->ui, HILDON_IM_CONTEXT_REQUEST_SURROUNDING_FULL );
-        }
-        else{
-            search_count = 0;
-            g_debug("anti_eat find prev line!");
-            tmp1 = g_strdup( surrounding );
-            gchar* ptr = g_utf8_offset_to_pointer(tmp1, offset);
-            *ptr = '\0';
-            tmp2 = g_strconcat( tmp1, surrounding_anti_eat_cache, NULL );
-            g_free( surrounding_anti_eat_cache ); g_free( tmp1 );
-            surrounding_anti_eat_cache = tmp2;
-            hildon_im_ui_send_surrounding_offset( priv->ui, TRUE, offset_count );
-            g_debug("anti_eat show \"%s\" , \"%s\"", surrounding_anti_eat_cache, surrounding_cache );
-            g_debug("anti_eat show offset \"%d\"", offset_count );
-            dbus_call_pad_show( surrounding_cache, surrounding_anti_eat_cache );
-        }
-    }
-    /*dbus_call_pad_show( surrounding );*/
-    /*hildon_im_ui_send_surrounding_offset( priv->ui, TRUE, 6 );*/
+    /*hildon_im_ui_send_communication_message( priv->ui, HILDON_IM_CONTEXT_HANDLE_BACKSPACE );*/
+    cursor_offset = offset;
+    surround_length = g_utf8_strlen( surrounding, -1 );
+    g_debug( "him_plugin_surrounding_offset = %d, length = %d", offset, surround_length );
+    dbus_call_pad_show( surrounding );
     /*hildon_im_ui_send_surrounding_content( priv->ui, "" );*/
 }
 
@@ -333,9 +274,8 @@ void module_init( GTypeModule* module ){
 
     conn = dbus_conn_new();
     
-    search_count = 0;
-    offset_count = 0;
-    empty_str = "";
+    cursor_offset = 0;
+    surround_length = 0;
 }
 
 void module_exit( void ){

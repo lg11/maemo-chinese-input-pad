@@ -5,6 +5,6 @@
 #include <glib.h>
 
 //int dbus_call_pad_show( DBusGConnection* conn );
-int dbus_call_pad_show( const gchar* str, const gchar* anti_eat_cache );
+int dbus_call_pad_show( const gchar* str );
 
 #endif

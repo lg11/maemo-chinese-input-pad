@@ -313,7 +313,6 @@ class App( dbus.service.Object ):
         self.pad.hide()
         self.pad.connect( "destroy", self.cb_quit )
         self.pad.connect( "delete-event", self.cb_delete )
-        self.anti_eat_cache = ""
     def run(self):
         gtk.gdk.threads_init()
         gtk.main()
@@ -322,13 +321,7 @@ class App( dbus.service.Object ):
         service = bus.get_object('me.him_plugin.dbus_conn', '/')
         method = service.get_dbus_method( 'request_commit', 'me.him_plugin.dbus_conn' )
         text =  self.ipad.text_buffer.get_text( self.ipad.text_buffer.get_start_iter(), self.ipad.text_buffer.get_end_iter() )
-        u_str = self.anti_eat_cache.decode("utf-8")
-        idx = u_str.find("\n")
-        if idx > 0:
-            self.anti_eat_cache = u_str[idx-1:]
-        text = self.anti_eat_cache + text
         method( text )
-        print "send " + text
         self.ipad.ipad.backend.reset()
         self.ipad.ipad.reset()
         self.ipad.text_view.get_buffer().set_text("")
@@ -339,12 +332,11 @@ class App( dbus.service.Object ):
     @dbus.service.method( 'me.maemo_chinese_input_pad' )
     def hide( self ):
         self.pad.hide()
-    @dbus.service.method( 'me.maemo_chinese_input_pad', in_signature='ss' )
-    def show( self, text, anti_eat_cache ):
+    @dbus.service.method( 'me.maemo_chinese_input_pad', in_signature='s' )
+    def show( self, text ):
         self.ipad.text_buffer.set_text(text)
-        self.anti_eat_cache = anti_eat_cache
         self.pad.show()
-        print "recv \"" + text + "\" , \"" + anti_eat_cache +"\""
+        print "recv \"" + text
         #self.set_opacity(0.5)
     @dbus.service.method( 'me.maemo_chinese_input_pad' )
     def quit( self ):
