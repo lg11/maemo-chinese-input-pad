@@ -10,10 +10,10 @@ from dbus.mainloop.glib import DBusGMainLoop
 
 from backend import Backend, QueryCache
 from ui_base import LabelButton
-from ui_base import LongPressButton
+from ui_base import LongPressButton, CandWin
 
 def cb_button_0( widget, ipad ):
-    if widget.enable_flag :
+    if widget.enable_flag and widget.longpressed_flag != True :
         #print widget.enable_flag
         if ipad.mode == ipad.MODE_INPUT:
             if len( ipad.backend.code ) > 0:
@@ -54,11 +54,23 @@ def cb_button_0( widget, ipad ):
             ipad.reset()
         ipad.update()
 
+def cb_button_mod( widget, ipad ):
+    if widget.longpressed_flag != True :
+        pass
+
+def cb_button_0_longpress( widget, ipad ):
+    if ipad.mode == ipad.MODE_INPUT:
+        if ipad.backend.code == "":
+            ipad.text_buffer.insert_at_cursor( str(0) )
+
 def cb_npad_longpress( widget, ipad ):
     if ipad.mode == ipad.MODE_SELECT:
         if widget.index >= 0 and widget.index <= 6:
             ipad.backend.cand.delete(widget.index)
             ipad.update()
+    elif ipad.mode == ipad.MODE_INPUT:
+        if ipad.backend.code == "":
+            ipad.text_buffer.insert_at_cursor( str(widget.index + 1) )
     #print "longpressed"
 
 def cb_npad_click( widget, ipad ):
@@ -108,9 +120,9 @@ def cb_npad_click( widget, ipad ):
 
 class NumPad( gtk.Frame ):
     button_label = [ \
-            ["1","2","3","4","5","6","7","8","9","0"]\
+            ["1","2","3","4","5","6","7","8","9","0","mode"]\
             ,\
-            ["1","2","3","4","5","6","7","8","9","0"]\
+            ["1","2","3","4","5","6","7","8","9","0","mode"]\
             ]
     button_width = 145
     button_height = 110
@@ -136,8 +148,17 @@ class NumPad( gtk.Frame ):
         b.index = 9
         b.set_size_request( self.button_width_0, self.button_height_0 )
         b.connect( "clicked", cb_button_0, ipad )
+        b.connect( "longpressed", cb_button_0_longpress, ipad )
         b.show()
         self.layout.put( b, 0, self.button_height * 3 )
+        self.button.append(b)
+
+        b = LabelButton(self.button_label[0][10])
+        b.index = 10
+        b.set_size_request( self.button_width, self.button_height_0 )
+        b.connect( "clicked", cb_button_0, ipad )
+        b.show()
+        self.layout.put( b, self.button_width_0, self.button_height * 3 )
         self.button.append(b)
 
         self.layout.show()
@@ -196,6 +217,10 @@ class ChineseInputPad( gtk.Frame ):
 
         self.text_view = text_view
         self.text_buffer = self.text_view.get_buffer()
+
+        self.cand_win = CandWin( text_view )
+        self.cand_win.show()
+        self.cand_win.hide()
     def update(self):
         cand = self.backend.cand
         cand_py = ""
@@ -278,10 +303,10 @@ class InputPad( gtk.Frame ):
         self.text_view.show()
         self.layout.put( self.text_view, 0, ChineseInputPad.label_height * 2 + ChineseInputPad.height_hint )
 
-        l_empty = gtk.Label()
-        self.layout.put( l_empty, 0, 0 )
-        l_empty.show()
-        l_empty.set_selectable(True)
+        #l_empty = gtk.Label()
+        #self.layout.put( l_empty, 0, 0 )
+        #l_empty.show()
+        #l_empty.set_selectable(True)
 
         #self.cp_b = gtk.Button("复制到剪切板")
         #self.cp_b.set_size_request( 200, 90 )
@@ -307,6 +332,7 @@ class App( dbus.service.Object ):
 
         self.pad = gtk.Dialog()
         self.ipad = InputPad()
+        self.cand_win= self.ipad.ipad.cand_win
         self.pad.vbox.pack_start(self.ipad)
         self.pad.set_decorated(False)
         self.ipad.show()
@@ -325,6 +351,7 @@ class App( dbus.service.Object ):
         self.ipad.ipad.backend.reset()
         self.ipad.ipad.reset()
         self.ipad.text_view.get_buffer().set_text("")
+        self.cand_win.hide()
         self.pad.hide()
         return True
     def cb_quit( self, widget ):
@@ -336,6 +363,7 @@ class App( dbus.service.Object ):
     def show( self, text ):
         self.ipad.text_buffer.set_text(text)
         self.pad.show()
+        self.cand_win.show()
         print "recv \"" + text
         #self.set_opacity(0.5)
     @dbus.service.method( 'me.maemo_chinese_input_pad' )
