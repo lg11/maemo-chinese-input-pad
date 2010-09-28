@@ -28,6 +28,7 @@ static dbus_conn* conn;
 
 static gint cursor_offset;
 static gint surround_length;
+static gboolean win_flag;
 
 GType him_plugin_get_type(void){ return him_plugin_type; }
 
@@ -36,12 +37,17 @@ gboolean him_plugin_request_commit( GObject* plugin, GString gstr ){
     g_debug( "him_plugin_request_commit \"%s\"", gstr.str );
     him_plugin_private* priv = HIM_PLUGIN_PRIVATE( plugin );
     /*hildon_im_ui_send_utf8( priv->ui, gstr.str );*/
-    hildon_im_ui_send_surrounding_offset( priv->ui, TRUE, surround_length - cursor_offset );
-    gint i;
-    for( i = 0; i < surround_length; i++ ){
-        hildon_im_ui_send_communication_message( priv->ui, HILDON_IM_CONTEXT_HANDLE_BACKSPACE );
+
+    if ( win_flag ){
+        hildon_im_ui_send_surrounding_offset( priv->ui, TRUE, surround_length - cursor_offset );
+        gint i;
+        for( i = 0; i < surround_length; i++ ){
+            hildon_im_ui_send_communication_message( priv->ui, HILDON_IM_CONTEXT_HANDLE_BACKSPACE );
+        }
+        hildon_im_ui_send_utf8( priv->ui, gstr.str );
     }
-    hildon_im_ui_send_utf8( priv->ui, gstr.str );
+    else
+        hildon_im_ui_send_surrounding_content( priv->ui, gstr.str );
     return TRUE;
 }
 
@@ -51,7 +57,14 @@ static void enable( HildonIMPlugin* plugin, gboolean init ){
     priv->conn = conn;
     dbus_conn_set( priv->conn, (GObject*)plugin, him_plugin_request_commit );
     /*hildon_im_ui_send_communication_message( priv->ui, HILDON_IM_CONTEXT_SURROUNDING_MODE );*/
-    hildon_im_ui_send_communication_message( priv->ui, HILDON_IM_CONTEXT_REQUEST_SURROUNDING_FULL );
+    Window win = hildon_im_ui_get_input_window( priv->ui );
+    win_flag = check_x11win_classhint(win);
+    /*if ( win_flag )*/
+        hildon_im_ui_send_communication_message( priv->ui, HILDON_IM_CONTEXT_REQUEST_SURROUNDING_FULL );
+    /*else*/
+        /*hildon_im_ui_send_communication_message( priv->ui, HILDON_IM_CONTEXT_REQUEST_SURROUNDING );*/
+
+
 }
 
 static void disable( HildonIMPlugin* plugin ){
