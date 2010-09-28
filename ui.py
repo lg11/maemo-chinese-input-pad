@@ -218,9 +218,9 @@ class ChineseInputPad( gtk.Frame ):
         self.text_view = text_view
         self.text_buffer = self.text_view.get_buffer()
 
-        self.cand_win = CandWin( text_view )
-        self.cand_win.show()
-        self.cand_win.hide()
+        #self.cand_win = CandWin( text_view )
+        #self.cand_win.show()
+        #self.cand_win.hide()
     def update(self):
         cand = self.backend.cand
         cand_py = ""
@@ -332,7 +332,7 @@ class App( dbus.service.Object ):
 
         self.pad = gtk.Dialog()
         self.ipad = InputPad()
-        self.cand_win= self.ipad.ipad.cand_win
+        #self.cand_win= self.ipad.ipad.cand_win
         self.pad.vbox.pack_start(self.ipad)
         self.pad.set_decorated(False)
         self.ipad.show()
@@ -351,7 +351,7 @@ class App( dbus.service.Object ):
         self.ipad.ipad.backend.reset()
         self.ipad.ipad.reset()
         self.ipad.text_view.get_buffer().set_text("")
-        self.cand_win.hide()
+        #self.cand_win.hide()
         self.pad.hide()
         return True
     def cb_quit( self, widget ):
@@ -363,7 +363,7 @@ class App( dbus.service.Object ):
     def show( self, text ):
         self.ipad.text_buffer.set_text(text)
         self.pad.show()
-        self.cand_win.show()
+        #self.cand_win.show()
         print "recv \"" + text
         #self.set_opacity(0.5)
     @dbus.service.method( 'me.maemo_chinese_input_pad' )
