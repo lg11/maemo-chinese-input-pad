@@ -18,4 +18,8 @@ plugin.o : plugin.c
 maemo-chinese-input-pad-plugin.so : utils.o plugin.o conn.o
 	gcc utils.o plugin.o conn.o -shared -o maemo-chinese-input-pad-plugin.so `pkg-config --libs hildon-input-method-framework-3.0 hildon-input-method-ui-3.0 glib-2.0 gtk+-2.0 gconf-2.0`
 
+clean :
+	rm *.o
+	rm bind.h
+	rm *.so
 

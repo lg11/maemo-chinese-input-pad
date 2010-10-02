@@ -76,7 +76,7 @@ class OperateThread( threading.Thread ):
         """
         线程实际运行时，执行的函数。由于sqlite的连接不能跨线程，所以在这里打开连接。
         """
-        self.conn = sqlite3.connect( "data/main.db" )
+        self.conn = sqlite3.connect( "/home/user/.config/maemo-chinese-input-pad/data/main.db" )
         self.cur = self.conn.cursor()
         self.cur.execute( "select * from phrase_0_0" )#first query has delay, due it.
         while(True):
@@ -190,7 +190,7 @@ class QueryThread( threading.Thread ):
         """
         线程实际运行时，执行的函数。由于sqlite的连接不能跨线程，所以在这里打开连接。
         """
-        self.conn = sqlite3.connect( "data/main.db" )
+        self.conn = sqlite3.connect( "/home/user/.config/maemo-chinese-input-pad/data/main.db" )
         self.cur = self.conn.cursor()
         self.cur.execute( "select * from phrase_0_0" )#first query has delay, due it.
         while(True):

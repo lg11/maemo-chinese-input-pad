@@ -8,4 +8,4 @@ gconftool --type string -s /apps/osso/inputmethod/default-plugins/finger maemo-c
 #gconftool --type string -s /apps/osso/inputmethod/default-plugins/hw-keyoard himc
 #gconftool --type string -s /apps/osso/inputmethod/input_method_plugin himc
 
-sh ./restart_im.sh
+sh /usr/share/maemo-chinese-input-pad/hildon-input-method-plugin/restart_im.sh

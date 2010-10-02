@@ -301,7 +301,7 @@ HildonIMPlugin* module_create( HildonIMUI* widget ){
     return HILDON_IM_PLUGIN( him_plugin_widget_new( widget ) );
 }
 
-const HildonIMPluginInfo* hildon_im_him_plugin_get_info( void ){
+const HildonIMPluginInfo* hildon_im_plugin_get_info( void ){
     g_debug( "hildon_im_him_plugin_get_info" );
     static const HildonIMPluginInfo info = 
     {
@@ -323,7 +323,7 @@ const HildonIMPluginInfo* hildon_im_him_plugin_get_info( void ){
     return &info;
 }
 
-gchar** hildon_im_him_plugin_get_available_languages( gboolean* free ){
+gchar** hildon_im_plugin_get_available_languages( gboolean* free ){
     g_debug( "him_plugin_get_available_languages" );
     static gchar* list[] = { "zh_CN", "en_GB", "en_US", NULL };
     *free = FALSE;
