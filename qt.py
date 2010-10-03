@@ -11,43 +11,57 @@ class NumArea():
         self.y = 0
         self.button_width = 144
         self.button_height = 120
+        self.track = []
     def check( self, x, y ):
         x = x - self.x
         y = y - self.y
         i = x / self.button_width
         j = y / self.button_height
-        print i + j * 3 + 1
+        idx = i + j * 3 + 1
+        if len( self.track ) == 0 :
+            self.track.append( idx )
+        else:
+            print idx
+            print self.track[-1]
+            if idx != self.track[-1]:
+                self.track.append( idx )
+        print self.track
+    def reset( self ):
+        self.track = []
 
 class InputPad( QtGui.QWidget ):
     request_quit = QtCore.Signal()
     def __init__( self, parent = None ):
         QtGui.QWidget.__init__( self, parent )
         self.longpress_stamp = 0
-        self.mouse_tracker = QtGui.QPainterPath()
+        self.mouse_track = QtGui.QPainterPath()
         self.num_area = NumArea()
     def mousePressEvent( self, event ):
         print "press %d, %d" %( event.x(), event.y() )
         self.longpress_stamp = self.longpress_stamp + 1
         if self.longpress_stamp > 65535:
             self.longpress_stamp = 0
-        self.mouse_tracker = QtGui.QPainterPath()
-        self.mouse_tracker.moveTo( event.x(), event.y() )
+        self.mouse_track = QtGui.QPainterPath()
+        self.mouse_track.moveTo( event.x(), event.y() )
+        self.num_area.reset()
+        self.num_area.check( event.x(), event.y() )
         self.repaint()
     def mouseReleaseEvent( self, event ):
         print "release %d, %d" %( event.x(), event.y() )
         self.longpress_stamp = self.longpress_stamp + 1
         if self.longpress_stamp > 65535:
             self.longpress_stamp = 0
-        self.mouse_tracker.lineTo( event.x(), event.y() )
+        self.mouse_track.lineTo( event.x(), event.y() )
         self.num_area.check( event.x(), event.y() )
         self.repaint()
     def mouseMoveEvent( self, event ):
         print "move %d, %d" %( event.x(), event.y() )
-        #self.tracker = QtGui.QPaintPath( event.pos )
+        #self.track = QtGui.QPaintPath( event.pos )
         self.longpress_stamp = self.longpress_stamp + 1
         if self.longpress_stamp > 65535:
             self.longpress_stamp = 0
-        self.mouse_tracker.lineTo( event.x(), event.y() )
+        self.mouse_track.lineTo( event.x(), event.y() )
+        self.num_area.check( event.x(), event.y() )
         self.repaint()
     #@QtCore.Slot(int)
     #def slot_int(i):
@@ -70,7 +84,7 @@ class InputPad( QtGui.QWidget ):
         #painter.setRenderHint( QtGui.QPainter.Antialiasing, True )
         #brush = QtGui.QBrush()
         self.draw_num_area( painter )
-        painter.drawPath( self.mouse_tracker )
+        painter.drawPath( self.mouse_track )
 
 if __name__ == "__main__":
     app = QtGui.QApplication( sys.argv )
