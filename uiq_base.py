@@ -36,3 +36,15 @@ class LongPressButton( QtGui.QPushButton ):
     #def slot_click( self ):
         #print "click"
 
+class NumPadKey( LongPressButton ):
+    key_clicked = QtCore.Signal(int)
+    def __init__( self, parent, code ):
+        LongPressButton.__init__( self, parent )
+        self.code = code
+        self.clicked.connect( self.slot_click )
+    @QtCore.Slot()
+    def slot_click( self ):
+        #print "click"
+        if self.longpress_flag == False :
+            self.key_clicked.emit( self.code )
+    
