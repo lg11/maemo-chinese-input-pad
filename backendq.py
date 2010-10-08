@@ -5,6 +5,9 @@ import dbus
 import dbus.service
 from dbus.mainloop.glib import DBusGMainLoop
 from PySide import QtCore
+#from PyQt4 import QtCore, QtGui
+#QtCore.Signal = QtCore.pyqtSignal
+#QtCore.Slot = QtCore.pyqtSlot
 
 import time
 

@@ -1,6 +1,9 @@
 #-!- coding=utf-8 -!-
 
 from PySide import QtCore, QtGui
+#from PyQt4 import QtCore, QtGui
+#QtCore.Signal = QtCore.pyqtSignal
+#QtCore.Slot = QtCore.pyqtSlot
 
 class LongPressButton( QtGui.QPushButton ):
     longpressed = QtCore.Signal()
@@ -29,8 +32,8 @@ class LongPressButton( QtGui.QPushButton ):
     @QtCore.Slot()
     def slot_release( self ):
         self.timer.stop()
-        if self.hitButton( self.mapFromGlobal( self.cursor().pos() ) ) == False and self.longpress_flag == False :
-            self.clicked.emit()
+        #if self.hitButton( self.mapFromGlobal( self.cursor().pos() ) ) == False and self.longpress_flag == False :
+            #self.clicked.emit()
         #print "release"
     #@QtCore.Slot()
     #def slot_click( self ):

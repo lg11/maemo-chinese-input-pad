@@ -1,6 +1,9 @@
 #-!- coding=utf-8 -!-
 
 from PySide import QtCore, QtGui
+#from PyQt4 import QtCore, QtGui
+#QtCore.Signal = QtCore.pyqtSignal
+#QtCore.Slot = QtCore.pyqtSlot
 import dbus
 import dbus.service
 from dbus.mainloop.glib import DBusGMainLoop
