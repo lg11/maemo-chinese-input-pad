@@ -238,9 +238,10 @@ class Cand( QtCore.QObject ):
     def update( self ):
         print "cand_updated"
         rs = self.cache.list[self.query_index]
+        self.list = []
         if rs:
             if self.page_index * self.CAND_LENGTH >= len( rs ):
-                self.list = []
+                pass
             else:
                 for i in range( self.CAND_LENGTH ):
                     idx = self.page_index * self.CAND_LENGTH + i
@@ -249,7 +250,7 @@ class Cand( QtCore.QObject ):
                     else:
                         pass
         else:
-            self.list = []
+            pass
 
         self.updated.emit()
 
@@ -292,8 +293,9 @@ class Cand( QtCore.QObject ):
     def longest( self, code_length ):
         rs = self.cache.list[code_length]
         i = code_length
-        while rs == None and i > 0 :
+        while len(rs) == 0 and i > 0 :
             i = i - 1
+            #print i
             rs = self.cache.list[i]
         self.query_index = i
         self.reset_page()
@@ -351,7 +353,7 @@ class Cand( QtCore.QObject ):
             item = self.selected_half[i]
             to_key = item[ self.cache.INDEX_KEY ]
             if key != to_key:
-                self.commit_phrase( code, key, to_key )
+                self.commit_phrase.emit( code, key, to_key )
         if select_count > 1: #insert
             code = ""
             pinyin = ""
@@ -362,8 +364,8 @@ class Cand( QtCore.QObject ):
             length = pinyin.count("'")
             pinyin = pinyin[1:]
             hanzi = text
-            self.new_phrase( code, pinyin, hanzi, length )
-        self.commited(text)
+            self.new_phrase.emit( code, pinyin, hanzi, length )
+        self.commited.emit(text)
     #@QtCore.Slot()
     #def search_complete(self):
         #self.longest()
@@ -375,8 +377,11 @@ class Backend( QtCore.QObject ):
     输入法后端，脏活累活全归它还见不得光的无名狗熊
     """
     code_set = set( ["2","3","4","5","6","7","8","9"] )
-    code_appended = QtCore.Signal( str )
+    request_query = QtCore.Signal( str )
+    request_commit = QtCore.Signal()
+    commited = QtCore.Signal( str )
     cand_updated = QtCore.Signal( list, list, str, str, str )
+    #code_backspaced = QtCore.Signal()
     def __init__( self ):
         """
         初始化。
@@ -393,10 +398,30 @@ class Backend( QtCore.QObject ):
         self.cache = QueryCache()
         self.cand = Cand(self.cache)
 
-        self.code_appended.connect( self.conn.query )
+        self.request_query.connect( self.conn.query )
         self.conn.query_completed.connect( self.cache.set )
         self.cache.query_completed.connect( self.cand.longest )
         self.cand.updated.connect( self.slot_cand_updated )
+        self.cand.select_phrase.connect( self.slot_select_phrase )
+        self.request_commit.connect( self.cand.commit )
+        self.cand.commit_phrase.connect( self.conn.adjust )
+        self.cand.new_phrase.connect( self.conn.insert )
+        self.cand.commited.connect( self.slot_commited )
+    @QtCore.Slot( str )
+    def slot_commited( self, text ):
+        self.commited.emit( text )
+    @QtCore.Slot()
+    def slot_request_query( self ):
+        self.request_query.emit( self.code )
+    @QtCore.Slot( list )
+    def slot_select_phrase( self, r ):
+        print "select"
+        selected_code_length = len( r[ self.cache.INDEX_CODE ] )
+        self.code = self.code[selected_code_length:]
+        if len( self.code ) > 0:
+            self.request_query.emit( self.code )
+        else:
+            self.request_commit.emit()
     @QtCore.Slot()
     def slot_cand_updated( self ):
         hanzi_list = []
@@ -417,7 +442,23 @@ class Backend( QtCore.QObject ):
     def append_code( self, code ):
         if code in self.code_set and len( self.code ) < 64:
             self.code = self.code + code
-            self.code_appended.emit( self.code )
+            self.request_query.emit( self.code )
+    def backspace( self ):
+        i = len(self.code)
+        if i > 0:
+            #self.cache.flag[i] = 0
+            self.code = self.code[:-1]
+            self.cache.query_completed.emit(i-1)
+    def request_cand( self ):
+        self.slot_cand_updated()
+    def select_phrase( self, index ):
+        self.cand.select( index )
+    def reset( self ):
+        self.code = ""
+        #self.selected = []
+        #self.selected_half = []
+        self.cand.reset()
+        self.cache.reset()
 
 class DBusObject( dbus.service.Object ): 
     def __init__( self ):
@@ -435,42 +476,40 @@ class DBusObject( dbus.service.Object ):
         dbus.service.Object.__init__( self, self.bus_name, '/' )
 
         self.backend = Backend()
-        self.backend.cand_updated.connect( self.new_cand )
+        self.backend.cand_updated.connect( self.cand_updated )
+        self.backend.commited.connect( self.commit )
 
-    @dbus.service.method( 'me.maemo_chinese_input_pad.backend', in_signature='s' )
-    def append_code( self, code ):
-        print "append %s" %(code)
-        self.backend.append_code( code )
-
-    #@dbus.service.method( 'me.maemo_chinese_input_pad.backend' )
-    #def backspace_code(self):
-        #i = len(self.code)
-        #if i > 0:
-            #self.cache.flag[i] = 0
-            #self.code = self.code[:-1]
+        self.ui = None
+        self.iface = None
+        #self.backend.reset()
 
     @dbus.service.method( 'me.maemo_chinese_input_pad.backend' )
+    def setup( self ):
+        self.ui = self.bus.get_object( 'me.maemo_chinese_input_pad.ui', '/' )
+        self.iface = dbus.Interface( self.ui, "me.maemo_chinese_input_pad.ui" )
+        self.iface.connect_to_signal( "append_code", self.append_code )
+        self.iface.connect_to_signal( "backspace", self.backspace )
+        self.iface.connect_to_signal( "request_cand", self.request_cand )
+        self.iface.connect_to_signal( "select_phrase", self.select_phrase )
+    def select_phrase( self, index ):
+        self.backend.select_phrase( index )
+    def request_cand( self ):
+        self.backend.request_cand()
+    def append_code( self, code ):
+        #print "append %s" %(code)
+        self.backend.append_code( code )
+    #@dbus.service.method( 'me.maemo_chinese_input_pad.backend' )
+    def backspace(self):
+        self.backend.backspace()
+    @dbus.service.method( 'me.maemo_chinese_input_pad.backend' )
     def reset(self):
+        self.backend.reset()
+    @dbus.service.signal( 'me.maemo_chinese_input_pad.backend', signature = "s" )
+    def commit( self, text ):
         pass
-        #self.code = ""
-        #self.selected = []
-        #self.selected_half = []
-        #self.cand.reset()
-        #self.cache.reset()
-
-    #def search(self):
-        #print "append %s" %(self.code)
-        #code_length = len( self.code )
-        #if code_length > 0:
-            #for i in range(1,code_length+1):
-                #if self.cache.flag[i] != 1 and  self.cache.flag[i] != 2:
-                    #request = SqlThread.OPERATE_REQUEST_QUERY
-                    #data = [ request, self.code[:i], self.cache, self.cand ]
-                    #self.conn.sql(data)
-
     @dbus.service.signal( 'me.maemo_chinese_input_pad.backend', signature = "asassss" )
-    def new_cand( self, hanzi_list, pinyin_list, selected_hanzi, selected_pinyin, remained_code ):
-        print "new_cand"
+    def cand_updated( self, hanzi_list, pinyin_list, selected_hanzi, selected_pinyin, remained_code ):
+        pass
     #@dbus.service.method( 'me.maemo_chinese_input_pad.backend', out_signature='as' )
     #def get_cand( self ):
         #print "gen_cand"
