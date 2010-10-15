@@ -11,13 +11,10 @@ from PySide import QtCore
 
 import time
 
-class QueryCache( QtCore.QObject ):
+class QueryCache():
     """
     查询缓存
     """
-    FLAG_INVAILD = 0
-    FLAG_IN_QUERY = 1
-    FLAG_VAILD = 2
     INDEX_KEY = 0
     INDEX_CODE = 1
     INDEX_PINYIN = 2
@@ -25,36 +22,27 @@ class QueryCache( QtCore.QObject ):
     INDEX_FREQ = 4
     INDEX_LENGTH = 5
     DELETED_PHRASE = ( 0, "", "", "", 0, 0 )
-    query_completed = QtCore.Signal( int )
+    updated = QtCore.Signal()
     def __init__(self):
         """
         初始化
         @cache 缓存列表
         @flag 标志
         """
-        #self.code = ""
         QtCore.QObject.__init__( self )
         self.list = []
-        #self.hanzi_list = []
-        self.flag = [] 
-        #self.hanzi_list = []
         for i in range(65):
             self.list.append([])
-            #self.hanzi_list.append(None)
-            self.flag.append(self.FLAG_INVAILD)
-    @QtCore.Slot()
-    def reset(self):
-        """
-        重置整个缓存
-        """
-        for i in range(65):
-            self.flag[i] = self.FLAG_INVAILD
+    #@QtCore.Slot()
+    #def reset(self):
+        #pass
+        #for i in range(65):
+            #self.list[i] = []
     @QtCore.Slot( int, list )
-    def set( self, index, result_list ):
-        print "cache seted"
+    def update( self, index, result_list ):
+        print "cache.update"
         self.list[index] = result_list
-        self.flag[index] = self.FLAG_VAILD
-        self.query_completed.emit( index )
+        self.updated.emit( index )
 
 
 class SqliteConn( QtCore.QObject ):
@@ -201,75 +189,56 @@ class Cand( QtCore.QObject ):
     """
     候选词列表类
     """
-    CAND_LENGTH = 6
-    select_phrase = QtCore.Signal( list )
-    cancel_select = QtCore.Signal( list )
-    commit_phrase = QtCore.Signal( str, int, int )
-    new_phrase = QtCore.Signal( str, str, str, int )
-    delete_phrase = QtCore.Signal( str, int )
-    commited = QtCore.Signal( str )
+    PAGE_LENGTH = 6
     updated = QtCore.Signal()
-    #phrase_shorter = QtCore.Signal()
-    #phrase_longest = QtCore.Signal()
-    #page_reseted = QtCore.Signal()
+    selected = QtCore.Signal( list )
+    deleted = QtCore.Signal( str, int )
     def __init__( self, cache ):
         """
         @cache
         内部变量：
         @list 候选词列表
         @page_index 页码
-        @query_index 查询缓存的索引
+        @cache_index 查询缓存的索引
         @cache
         """
         QtCore.QObject.__init__( self )
         self.list = []
         self.page_index = 0
-        self.query_index = 0
+        self.cache_index = 0
         self.cache = cache
-        self.selected = []
-        self.selected_half = []
-
-        #self.selected_hanzi = ""
-        #self.selected_pinyin = ""
-        #self.hanzi_list = []
-        #self.pinyin_list = []
-        #self.remained_code = ""
-
-        #self.phrase_shorter.connect( self.reset_page )
-        #self.phrase_longest.connect( self.reset_page )
     @QtCore.Slot()
     def update( self ):
-        print "cand_updated"
-        rs = self.cache.list[self.query_index]
+        print "cand.update"
+        rs = self.cache.list[self.cache_index]
         self.list = []
         if rs:
-            if self.page_index * self.CAND_LENGTH >= len( rs ):
+            if self.page_index * self.PAGE_LENGTH >= len( rs ):
                 pass
             else:
                 for i in range( self.CAND_LENGTH ):
-                    idx = self.page_index * self.CAND_LENGTH + i
-                    if idx < len(rs):
-                        self.list.append( rs[ idx ] )
+                    index = self.page_index * self.PAGE_LENGTH + i
+                    if index < len(rs):
+                        self.list.append( rs[ index ] )
                     else:
                         pass
         else:
             pass
-
         self.updated.emit()
 
     @QtCore.Slot()
     def next_page(self):
-        rs = self.cache.list[self.query_index]
-        if rs :
-            index = self.page_index + 1
-            if index * self.CAND_LENGTH >= len( rs ):
-                pass
-            else:
-                self.page_index = index
+        index = self.page_index + 1
+        if index * self.PAGE_LENGTH >= len( rs ):
+            pass
+        else:
+            self.page_index = index
+            self.update()
     @QtCore.Slot()
     def prev_page(self):
         if self.page_index > 0:
             self.page_index = self.page_index - 1
+            self.update()
         else:
             pass
     @QtCore.Slot()
@@ -279,70 +248,50 @@ class Cand( QtCore.QObject ):
     @QtCore.Slot()
     def shorter(self):
         #print "shorter"
-        if self.query_index > 0 :
-            i = self.query_index - 1
-            rs = self.cache.list[i]
+        if self.cache_index > 0 :
+            index = self.cache_index - 1
+            rs = self.cache.list[index]
             flag = True
-            while flag and len(rs) == 0:
-                #print i
-                if i == 0:
+            while flag and len(rs) < 1 :
+                if index < 1 :
                     flag = False
                 else:
-                    i = i - 1
-                    rs = self.cache.list[i]
-            self.query_index = i
-        self.reset_page()
+                    index = index - 1
+                    rs = self.cache.list[index]
+            self.cache_index = index
+            self.reset_page()
     @QtCore.Slot( int )
     def longest( self, code_length ):
         rs = self.cache.list[code_length]
-        i = code_length
-        while len(rs) == 0 and i > 0 :
-            i = i - 1
-            #print i
-            rs = self.cache.list[i]
-        self.query_index = i
+        index = code_length
+        while len(rs) < 1 and index > 0 :
+            index = index - 1
+            rs = self.cache.list[index]
+        self.cache_index = index
         self.reset_page()
     @QtCore.Slot()
     def reset(self):
         self.page_index = 0
-        self.query_index = 0
-        self.selected = []
-        self.selected_half = []
+        self.cache_index = 0
         self.list = []
-    @QtCore.Slot()
-    def cancel( self ):
-        i = len( self.selected )
-        if i > 0:
-            #code = self.selected[i-1][self.cache.INDEX_CODE] + code
-            r = self.selected[-1]
-            self.selected = self.selected[:-1]
-            self.selected_half = self.selected_half[:-1]
-            self.cancel_select.emit(r)
-        else:
-            pass
     @QtCore.Slot( int )
     def select( self, index ):
         if index < len( self.list ) :
             if self.list[index][ QueryCache.INDEX_LENGTH ] > 0 :
-                self.selected.append( self.list[index] )
-                half_index = self.page_index * self.CAND_LENGTH + index
-                if half_index < 3:
-                    half_index = 0
-                else:
-                    half_index = half_index / 2
-                self.selected_half.append( self.cache.list[self.query_index][half_index] )
                 r = self.list[index]
-                self.select_phrase.emit(r)
+                self.selected.emit(r)
     @QtCore.Slot( int )
     def delete( self, index ):
         item = self.list[index]
         if item[ self.cache.INDEX_LENGTH ] > 1 :
             #print item[3]
-            self.delete_phrase.emit( item[ QueryCache.INDEX_CODE ] , item[ QueryCache.INDEX_KEY ] )
+            self.deleted.emit( item[ QueryCache.INDEX_CODE ] , item[ QueryCache.INDEX_KEY ] )
             item = self.cache.DELETED_PHRASE
             self.list[index] = item
             index = self.page_index * self.CAND_LENGTH + index
-            self.cache.list[ self.query_index ][index] = item
+            self.cache.list[ self.cache_index ][index] = item
+
+
     @QtCore.Slot()
     def commit(self):
         text = ""
@@ -369,21 +318,13 @@ class Cand( QtCore.QObject ):
             hanzi = text
             self.new_phrase.emit( code, pinyin, hanzi, length )
         self.commited.emit(text)
-    #@QtCore.Slot()
-    #def search_complete(self):
-        #self.longest()
-        #self.reset_page()
-        #self.update()
 
-class Backend( QtCore.QObject ):
+class Backend( dbus.service.Object ): 
     """
     输入法后端，脏活累活全归它还见不得光的无名狗熊
     """
     code_set = set( ["2","3","4","5","6","7","8","9"] )
-    request_query = QtCore.Signal( str )
-    request_commit = QtCore.Signal()
-    commited = QtCore.Signal( str )
-    cand_updated = QtCore.Signal( list, list, str, str, str )
+    #commited = QtCore.Signal( str )
     #code_backspaced = QtCore.Signal()
     def __init__( self ):
         """
@@ -394,29 +335,29 @@ class Backend( QtCore.QObject ):
         @cache 查询结果缓冲
         @cand 候选字列表
         """
-        QtCore.QObject.__init__( self )
+        self.bus = dbus.SessionBus()
+        self.bus_name = dbus.service.BusName( 'me.maemo_chinese_input_pad.backend', self.bus )
+        dbus.service.Object.__init__( self, self.bus_name, '/' )
 
         self.code = ""
         self.conn = SqliteConn()
         self.cache = QueryCache()
         self.cand = Cand(self.cache)
 
-        self.request_query.connect( self.conn.query )
-        self.conn.query_completed.connect( self.cache.set )
-        self.cache.query_completed.connect( self.cand.longest )
-        self.cand.updated.connect( self.slot_cand_updated )
-        self.cand.select_phrase.connect( self.slot_select_phrase )
-        self.request_commit.connect( self.cand.commit )
-        self.cand.commit_phrase.connect( self.conn.adjust )
-        self.cand.new_phrase.connect( self.conn.insert )
-        self.cand.commited.connect( self.slot_commited )
-    @QtCore.Slot( str )
+        self.selected = []
+        self.selected_half = []
+
+    def setup( self ):
+        self.ui = self.bus.get_object( 'me.maemo_chinese_input_pad.ui', '/' )
+        self.iface = dbus.Interface( self.ui, "me.maemo_chinese_input_pad.ui" )
+        self.iface.connect_to_signal( "append_code", self.append_code )
+        self.iface.connect_to_signal( "backspace_code", self.backspace_code )
+    def append_code( self, code ):
+        pass
     def slot_commited( self, text ):
         self.commited.emit( text )
-    @QtCore.Slot()
     def slot_request_query( self ):
         self.request_query.emit( self.code )
-    @QtCore.Slot( list )
     def slot_select_phrase( self, r ):
         print "select"
         selected_code_length = len( r[ self.cache.INDEX_CODE ] )
@@ -425,7 +366,6 @@ class Backend( QtCore.QObject ):
             self.request_query.emit( self.code )
         else:
             self.request_commit.emit()
-    @QtCore.Slot()
     def slot_cand_updated( self ):
         hanzi_list = []
         pinyin_list = []

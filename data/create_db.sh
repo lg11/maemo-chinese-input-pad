@@ -1,6 +1,5 @@
 #!/bin/sh
 
-python convert.py pinyin_table.txt > code_full.txt
-python convert.py phrase_pinyin_freq_sc_20090402.txt >> code_full.txt
-python create_db.py
-python create_idx.py
+python ./google_pinyin_dict_convert_step_001.py > buffer_001
+cat buffer_001 | sort -rn > buffer_002
+python ./google_pinyin_dict_convert_step_002.py > log
