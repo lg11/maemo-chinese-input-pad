@@ -29,18 +29,21 @@ for line in lines:
         if code in zi_dict.keys():
             pass
         else:
-            zi_dict[code] = [ [], [] ]
-        zi_dict[code][0].append(pinyin)
-        zi_dict[code][1].append(hanzi)
+            zi_dict[code] = []
+        node = [ pinyin, hanzi ]
+        zi_dict[code].append( node )
         print "zi"
     elif len( hanzi.decode("utf-8") ) > 1 :
         if code in ci_dict.keys():
             pass
         else:
-            ci_dict[code] = [ [], [] ]
-        ci_dict[code][0].append(pinyin)
-        ci_dict[code][1].append(hanzi)
-        print "ci"
+            ci_dict[code] = []
+        if len(ci_dict[code]) > 32:
+            print "droped ci"
+        else:
+            node = [ pinyin, hanzi ]
+            ci_dict[code].append( node )
+            print "ci"
     else:
         print "error"
 
