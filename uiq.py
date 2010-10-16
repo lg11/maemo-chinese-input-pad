@@ -10,7 +10,7 @@ import dbus.service
 from dbus.mainloop.glib import DBusGMainLoop
 import sys
 
-#import time
+import time
 
 from backendq import Backend
 
@@ -88,8 +88,9 @@ class CandPad( QtGui.QWidget ) :
         self.inputpad = inputpad
 
         self.page_index = 0
+        self.result_list = []
     def update( self ):
-        #time_stamp = time.time()
+        time_stamp = time.time()
         pinyin_text_list = []
         hanzi_text_list = []
 
@@ -131,37 +132,62 @@ class CandPad( QtGui.QWidget ) :
         self.pinyin_label.setText( "<font color=green>'</font>".join( pinyin_text_list ) )
         self.hanzi_label.setText( "<font color=green>'</font>".join( hanzi_text_list ) )
 
-        cand_list = []
-        zi_count = 0
-        ci_count = 0
-        if result[0]:
-            zi_count = len( result[0] )
-        if result[1]:
-            ci_count = len( result[1] )
-        #base_index = self.page_index * self.CAND_LENGTH / 2
+        result_list = []
         if result[0] or result[1]:
-            if ci_count <= 0 :
-                for i in range( self.CAND_LENGTH ) :
-                    index = self.page_index * self.CAND_LENGTH + i
-                    if index < zi_count :
-                        cand_list.append( ( 0, index ) )
-            elif zi_count <= 0 :
-                for i in range( self.CAND_LENGTH ) :
-                    index = self.page_index * self.CAND_LENGTH + i
-                    if index < ci_count :
-                        cand_list.append( ( 1, index ) )
-            #if i < 3 :
-                #print 1
-                #if index < zi_count :
-                    #print 2
-                    #if base_index < ci_count :
-                        #cand_list.append( 0, index )
+            zi_count = 0
+            ci_count = 0
+            if result[0]:
+                zi_count = len( result[0] )
+            if result[1]:
+                ci_count = len( result[1] )
+            zi_index = 0
+            ci_index = 0
+            flag = True
+            while flag:
+                zi_flag = True
+                ci_flag = True
+                if zi_index < zi_count:
+                    for i in range(3):
+                        if zi_index < zi_count:
+                            result_list.append( [ 0 ,zi_index ] )
+                            zi_index = zi_index + 1
+                        else:
+                            zi_flag = False
+                else:
+                    zi_flag = False
+                if ci_index < ci_count:
+                    for i in range(3):
+                        if ci_index < ci_count:
+                            result_list.append( [ 1, ci_index ] )
+                            ci_index = ci_index + 1
+                        else:
+                            ci_flag = False
+                else:
+                    ci_flag = False
+                flag = zi_flag or ci_flag
+                #if zi_index + ci_index > ( self.page_index + 1 ) * self.CAND_LENGTH :
+                    #flag = False
+
+        self.result_list = result_list
+        cand_list = []
+        for i in range( self.CAND_LENGTH ) :
+            index = self.page_index * self.CAND_LENGTH + i
+            if index < len( result_list ) :
+                cand_list.append( result_list[index] )
         for i in range( self.CAND_LENGTH ) :
             cand_text = ""
             if i < len( cand_list ):
                 cand_text = "<font color=black>" + result[ cand_list[i][0] ][ cand_list[i][1] ][1].decode("utf-8") + "</font>"
             self.cand_label[i].setText( cand_text )
-        #print "candpad update cast", time.time() - time_stamp, "second"
+        print "candpad update cast", time.time() - time_stamp, "second"
+    def prev_page( self ) :
+        if self.page_index > 0 :
+            self.page_index = self.page_index - 1
+            self.update()
+    def next_page( self ) :
+        self.page_index = self.page_index + 1
+        self.update()
+            
 
 class TextView( QtGui.QWidget ) :
     def __init__( self, parent = None, inputpad = None ):
@@ -267,16 +293,29 @@ class InputPad( QtGui.QWidget ):
         if self.mode == self.MODE_INPUT :
             if code >= 2 and code <= 9 :
                 self.code = self.code + str(code)
-                #time_stamp = time.time()
+                time_stamp = time.time()
                 result = self.backend.query( self.code )
-                #print "query cast", time.time() - time_stamp, "second"
+                print "query cast", time.time() - time_stamp, "second"
                 self.cache.append( result )
+                self.candpad.update()
+            elif code == 1 :
+                self.set_mode( self.MODE_SELECT )
                 self.candpad.update()
             elif code == self.numpad.CODE_BACKSPACE :
                 if len( self.code ) > 0:
                     self.code = self.code[:-1]
                     self.cache.pop()
                     self.candpad.update()
+        if self.mode == self.MODE_SELECT :
+            if code >= 1 and code <= 6 :
+                pass
+            elif code == 7 :
+                self.candpad.prev_page()
+            elif code == 9 :
+                self.candpad.next_page()
+            elif code == self.numpad.CODE_BACKSPACE :
+                self.set_mode( self.MODE_INPUT )
+                self.candpad.update()
         #print "key_click cast", time.time() - time_stamp, "second"
                 
 

@@ -3,6 +3,10 @@
 from marshal import dumps, loads
 import dbhash
 
+#class Result():
+    #def __init__( self, result ):
+
+
 class Backend():
     def __init__( self ):
         self.cache_zi = {}
