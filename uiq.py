@@ -132,48 +132,20 @@ class CandPad( QtGui.QWidget ) :
         self.pinyin_label.setText( "<font color=green>'</font>".join( pinyin_text_list ) )
         self.hanzi_label.setText( "<font color=green>'</font>".join( hanzi_text_list ) )
 
-        result_list = []
-        if result[0] or result[1]:
-            zi_count = 0
-            ci_count = 0
-            if result[0]:
-                zi_count = len( result[0] )
-            if result[1]:
-                ci_count = len( result[1] )
-            zi_index = 0
-            ci_index = 0
-            flag = True
-            while flag:
-                zi_flag = True
-                ci_flag = True
-                if zi_index < zi_count:
-                    for i in range(3):
-                        if zi_index < zi_count:
-                            result_list.append( [ 0 ,zi_index ] )
-                            zi_index = zi_index + 1
-                        else:
-                            zi_flag = False
-                else:
-                    zi_flag = False
-                if ci_index < ci_count:
-                    for i in range(3):
-                        if ci_index < ci_count:
-                            result_list.append( [ 1, ci_index ] )
-                            ci_index = ci_index + 1
-                        else:
-                            ci_flag = False
-                else:
-                    ci_flag = False
-                flag = zi_flag or ci_flag
-                #if zi_index + ci_index > ( self.page_index + 1 ) * self.CAND_LENGTH :
-                    #flag = False
-
-        self.result_list = result_list
         cand_list = []
-        for i in range( self.CAND_LENGTH ) :
-            index = self.page_index * self.CAND_LENGTH + i
-            if index < len( result_list ) :
-                cand_list.append( result_list[index] )
+        if result[0] or result[1]:
+            if result[0] and result[1] :
+                pass
+            elif result[0]:
+                for i in range( self.CAND_LENGTH ):
+                    index = self.page_index * self.CAND_LENGTH + i
+                    if index < len( result[0] ):
+                        cand_list.append( [ 0 , index ] )
+            else:
+                for i in range( self.CAND_LENGTH ):
+                    index = self.page_index * self.CAND_LENGTH + i
+                    if index < len( result[1] ):
+                        cand_list.append( [ 1 , index ] )
         for i in range( self.CAND_LENGTH ) :
             cand_text = ""
             if i < len( cand_list ):
