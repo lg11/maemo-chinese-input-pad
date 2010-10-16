@@ -88,11 +88,11 @@ class CandPad( QtGui.QWidget ) :
         self.inputpad = inputpad
 
         self.page_index = 0
-        self.result_list = []
+        self.cand_list = []
+        self.result = [ None, None ]
+        self.remained_code = ""
     def update( self ):
         time_stamp = time.time()
-        pinyin_text_list = []
-        hanzi_text_list = []
 
         index = len( self.inputpad.cache )
         if index > 0:
@@ -110,32 +110,43 @@ class CandPad( QtGui.QWidget ) :
         #print result
         #print remained_code
 
-        if result[0] or result[1]:
-            index = self.page_index * self.CAND_LENGTH
-            if result[0]:
-                pinyin = result[0][index][0]
-                hanzi = result[0][index][1].decode("utf-8")
-            else:
-                pinyin = result[1][index][0]
-                hanzi = result[1][index][1].decode("utf-8")
-            if self.inputpad.mode == self.inputpad.MODE_INPUT :
-                pinyin_text_list.append( "<font color=blue>" + pinyin + "</font>" )
-                hanzi_text_list.append( "<font color=blue>" + hanzi + "</font>" )
-            elif self.inputpad.mode == self.inputpad.MODE_SELECT :
-                pinyin_text_list.append( "<font color=white style=\"background-color: blue\">" + pinyin + "</font>" )
-                hanzi_text_list.append( "<font color=white style=\"background-color: blue\">" + hanzi + "</font>" )
-
-        if len( remained_code ) > 0 :
-            pinyin_text_list.append( "<font color=red>" + remained_code + "</font>" )
-            hanzi_text_list.append( "<font color=red>" + remained_code + "</font>" )
-
-        self.pinyin_label.setText( "<font color=green>'</font>".join( pinyin_text_list ) )
-        self.hanzi_label.setText( "<font color=green>'</font>".join( hanzi_text_list ) )
 
         cand_list = []
         if result[0] or result[1]:
             if result[0] and result[1] :
-                pass
+                base_index = self.page_index * self.CAND_LENGTH / 2
+                if base_index < len( result[0] ) and base_index < len( result[1] ) :
+                    flag = True
+                    flag_zi = True
+                    flag_ci = True
+                    index_zi = base_index
+                    index_ci = base_index
+                    while flag and len( cand_list ) < 6 :
+                        for i in range( self.CAND_LENGTH / 2 ):
+                            if index_zi < len( result[0] ):
+                                cand_list.append( [ 0 , index_zi ] )
+                                index_zi = index_zi + 1
+                            else:
+                                flag_zi = False
+                        for i in range( self.CAND_LENGTH / 2 ):
+                            if index_ci < len( result[1] ):
+                                cand_list.append( [ 1 , index_ci ] )
+                                index_ci = index_ci + 1
+                            else:
+                                flag_ci = False
+                        flag = flag_zi or flag_ci
+                elif base_index < len( result[0] ) :
+                    index = self.page_index * self.CAND_LENGTH - len( result[1] )
+                    for i in range( self.CAND_LENGTH ):
+                        if index < len( result[0] ):
+                            cand_list.append( [ 0 , index ] )
+                            index = index + 1
+                else :
+                    index = self.page_index * self.CAND_LENGTH - len( result[0] )
+                    for i in range( self.CAND_LENGTH ):
+                        if index < len( result[1] ):
+                            cand_list.append( [ 1 , index ] )
+                            index = index + 1
             elif result[0]:
                 for i in range( self.CAND_LENGTH ):
                     index = self.page_index * self.CAND_LENGTH + i
@@ -151,14 +162,61 @@ class CandPad( QtGui.QWidget ) :
             if i < len( cand_list ):
                 cand_text = "<font color=black>" + result[ cand_list[i][0] ][ cand_list[i][1] ][1].decode("utf-8") + "</font>"
             self.cand_label[i].setText( cand_text )
+
+        pinyin_text_list = []
+        hanzi_text_list = []
+        if len( self.inputpad.selected ) > 0 :
+            selected_text = ""
+            for selected in self.inputpad.selected :
+                selected_text = selected_text + selected[1][ selected[2][0] ][ selected[2][1] ][1]
+                print selected_text
+            pinyin_text_list.append( "<font color=black>" + selected_text.decode("utf-8") + "</font>" )
+        if len( cand_list ) > 0 :
+            pinyin = result[ cand_list[0][0] ][ cand_list[0][1] ][0]
+            hanzi = result[ cand_list[0][0] ][ cand_list[0][1] ][1].decode("utf-8")
+            if self.inputpad.mode == self.inputpad.MODE_INPUT :
+                pinyin_text_list.append( "<font color=blue>" + pinyin + "</font>" )
+                hanzi_text_list.append( "<font color=blue>" + hanzi + "</font>" )
+            elif self.inputpad.mode == self.inputpad.MODE_SELECT :
+                pinyin_text_list.append( "<font color=white style=\"background-color: blue\">" + pinyin + "</font>" )
+                hanzi_text_list.append( "<font color=white style=\"background-color: blue\">" + hanzi + "</font>" )
+
+        if len( remained_code ) > 0 :
+            pinyin_text_list.append( "<font color=red>" + remained_code + "</font>" )
+            hanzi_text_list.append( "<font color=red>" + remained_code + "</font>" )
+
+        self.pinyin_label.setText( "<font color=green>'</font>".join( pinyin_text_list ) )
+        self.hanzi_label.setText( "<font color=green>'</font>".join( hanzi_text_list ) )
+
+        self.cand_list = cand_list
+        self.result = result
+        self.remained_code = remained_code
         print "candpad update cast", time.time() - time_stamp, "second"
     def prev_page( self ) :
         if self.page_index > 0 :
             self.page_index = self.page_index - 1
             self.update()
     def next_page( self ) :
-        self.page_index = self.page_index + 1
-        self.update()
+        result = self.result
+        count_zi = 0
+        count_ci = 0
+        if result[0]:
+            count_zi = len( result[0] )
+        if result[1]:
+            count_ci = len( result[1] )
+        index = ( self.page_index + 1 ) * self.CAND_LENGTH
+        if index < count_zi + count_ci :
+            self.page_index = self.page_index + 1
+            self.update()
+    def select( self, index ) :
+        cand_list = self.cand_list
+        if index < len( self.cand_list ) : 
+            code = self.inputpad.code[:-len(self.remained_code)]
+            result = self.result
+            self.inputpad.selected.append( ( code, result, cand_list[index] ) )
+            self.inputpad.code = self.remained_code
+            self.inputpad.recache()
+            self.update()
             
 
 class TextView( QtGui.QWidget ) :
@@ -256,21 +314,30 @@ class InputPad( QtGui.QWidget ):
         self.numpad.key_clicked.connect( self.numpad_key_click )
 
         self.cache = []
+        self.selected = []
 
     def set_mode( self, mode ):
         self.mode = mode
+    def recache( self ):
+        self.cache = []
+        code = ""
+        for ch in self.code:
+            code = code + ch
+            result = self.backend.query( code )
+            self.cache.append( result )
     @QtCore.Slot( int )
     def numpad_key_click( self, code ):
-        #time_stamp = time.time()
+        time_stamp = time.time()
         if self.mode == self.MODE_INPUT :
             if code >= 2 and code <= 9 :
                 self.code = self.code + str(code)
-                time_stamp = time.time()
+                #time_stamp = time.time()
                 result = self.backend.query( self.code )
-                print "query cast", time.time() - time_stamp, "second"
+                #print "query cast", time.time() - time_stamp, "second"
                 self.cache.append( result )
                 self.candpad.update()
             elif code == 1 :
+                #print "enter select"
                 self.set_mode( self.MODE_SELECT )
                 self.candpad.update()
             elif code == self.numpad.CODE_BACKSPACE :
@@ -278,9 +345,10 @@ class InputPad( QtGui.QWidget ):
                     self.code = self.code[:-1]
                     self.cache.pop()
                     self.candpad.update()
-        if self.mode == self.MODE_SELECT :
+        elif self.mode == self.MODE_SELECT :
             if code >= 1 and code <= 6 :
-                pass
+                #print "select"
+                self.candpad.select( code - 1 )
             elif code == 7 :
                 self.candpad.prev_page()
             elif code == 9 :
@@ -288,7 +356,7 @@ class InputPad( QtGui.QWidget ):
             elif code == self.numpad.CODE_BACKSPACE :
                 self.set_mode( self.MODE_INPUT )
                 self.candpad.update()
-        #print "key_click cast", time.time() - time_stamp, "second"
+        print "key_click cast", time.time() - time_stamp, "second"
                 
 
 
