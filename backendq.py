@@ -9,32 +9,53 @@ import dbhash
 
 class Backend():
     def __init__( self ):
-        self.cache_zi = {}
-        self.cache_ci = {}
-        self.db_zi = dbhash.open( "data/db_zi", "w" )
-        self.db_ci = dbhash.open( "data/db_ci", "w" )
-        self.code_set_zi = set( self.db_zi.keys() )
-        self.code_set_ci = set( self.db_ci.keys() )
+        self.cache = ( {}, {} )
+        db_zi = dbhash.open( "data/db_zi", "w" )
+        db_ci = dbhash.open( "data/db_ci", "w" )
+        self.db = ( db_zi, db_ci )
+        self.code_set = ( set( db_zi.keys() ), set( db_ci.keys() ) )
+
+    def adjust( self, code, flag, index ):
+        #print "code = ", code
+        if index > 0:
+            result = self.cache[flag][code]
+            item = result[index]
+            #print item[1]
+            if index < 4 :
+                new_index = 0
+            else:
+                new_index = index / 2
+            result.pop(index)
+            result.insert( new_index, item )
+            self.cache[flag][code] = result
+            self.db[flag][code] = dumps( result )
+            return new_index
+        else:
+            return 0
+
+    def close( self ):
+        self.db[0].close()
+        self.db[1].close()
 
     def query( self, code ):
         result = [ None, None ]
 
         item = None
-        if code in self.code_set_zi:
-            if code in self.cache_zi.keys():
-                item = self.cache_zi[code]
+        if code in self.code_set[0]:
+            if code in self.cache[0].keys():
+                item = self.cache[0][code]
             else:
-                item = loads( self.db_zi[code] )
-                self.cache_zi[code] = item
+                item = loads( self.db[0][code] )
+                self.cache[0][code] = item
         result[0] = item
 
         item = None
-        if code in self.code_set_ci:
-            if code in self.cache_ci.keys():
-                item = self.cache_ci[code]
+        if code in self.code_set[1]:
+            if code in self.cache[1].keys():
+                item = self.cache[1][code]
             else:
-                item = loads( self.db_ci[code] )
-                self.cache_ci[code] = item
+                item = loads( self.db[1][code] )
+                self.cache[1][code] = item
         result[1] = item
 
         return result
