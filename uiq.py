@@ -386,15 +386,18 @@ class InputPad( QtGui.QWidget ):
             result = self.backend.query( code )
             self.cache.append( result )
     def commit( self ) :
-        self.code = ""
-        self.recache()
+        #self.code = ""
         if len( self.selected[0] ) > 0 :
             self.textview.commit( self.candpad.commit() )
         self.selected[0] = ""
         self.selected[1] = ""
         self.selected[2] = ""
         self.candpad.page_index = 0
-        self.candpad.hide()
+        if len( self.code ) > 0 :
+            self.recache()
+            #pass
+        else:
+            self.candpad.hide()
     @QtCore.Slot( int )
     def numpad_key_click( self, code ):
         time_stamp = time.time()
