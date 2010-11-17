@@ -178,11 +178,9 @@ class CandPad( QtGui.QWidget ) :
         for i in range( self.CAND_LENGTH ) :
             cand_text = ""
             if i < len( cand_list ):
-                if i == 0:
-                    #cand_text = "<font color=blue>" + result[ cand_list[i][0] ][ cand_list[i][1] ][1].decode("utf-8") + "</font>"
-                    cand_text = result[ cand_list[i][0] ][ cand_list[i][1] ][1].decode("utf-8")
+                if self.inputpad.mode == self.inputpad.MODE_SELECT :
+                    cand_text = ">" + result[ cand_list[i][0] ][ cand_list[i][1] ][1].decode("utf-8") + "<"
                 else:
-                    #cand_text = "<font color=black>" + result[ cand_list[i][0] ][ cand_list[i][1] ][1].decode("utf-8") + "</font>"
                     cand_text = result[ cand_list[i][0] ][ cand_list[i][1] ][1].decode("utf-8")
             self.cand_label[i].setText( cand_text )
 
@@ -190,28 +188,23 @@ class CandPad( QtGui.QWidget ) :
         hanzi_text_list = []
         if len( self.inputpad.selected[0] ) > 0 :
             selected_text = self.inputpad.selected[2]
-            #pinyin_text_list.append( "<font color=black>" + selected_text.decode("utf-8") + "</font>" )
             pinyin_text_list.append( selected_text.decode("utf-8") )
         if len( cand_list ) > 0 :
             pinyin = result[ cand_list[0][0] ][ cand_list[0][1] ][0]
             #hanzi = result[ cand_list[0][0] ][ cand_list[0][1] ][1].decode("utf-8")
             if self.inputpad.mode == self.inputpad.MODE_INPUT :
-                #pinyin_text_list.append( "<font color=blue>" + pinyin + "</font>" )
                 pinyin_text_list.append( pinyin )
-                #hanzi_text_list.append( "<font color=blue>" + hanzi + "</font>" )
+                #hanzi_text_list.append( hanzi )
             elif self.inputpad.mode == self.inputpad.MODE_SELECT :
-                #pinyin_text_list.append( "<font color=white style=\"background-color: blue\">" + pinyin + "</font>" )
                 pinyin_text_list.append( pinyin )
-                #hanzi_text_list.append( "<font color=white style=\"background-color: blue\">" + hanzi + "</font>" )
+                #hanzi_text_list.append( hanzi )
 
         if len( remained_code ) > 0 :
-            #pinyin_text_list.append( "<font color=red>" + remained_code + "</font>" )
             pinyin_text_list.append( remained_code )
-            #hanzi_text_list.append( "<font color=red>" + remained_code + "</font>" )
+            #hanzi_text_list.append( remained_code )
 
-        #self.pinyin_label.setText( "<font color=green>'</font>".join( pinyin_text_list ) )
         self.pinyin_label.setText( "'".join( pinyin_text_list ) )
-        #self.hanzi_label.setText( "<font color=green>'</font>".join( hanzi_text_list ) )
+        #self.hanzi_label.setText( "'".join( hanzi_text_list ) )
 
         self.cand_list = cand_list
         #print "candpad update cast", time.time() - time_stamp, "second"
