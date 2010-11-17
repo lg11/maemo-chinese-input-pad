@@ -236,7 +236,10 @@ class CandPad( QtGui.QWidget ) :
             new_index = self.inputpad.backend.adjust( code, cand_list[index][0], cand_list[index][1] )
             cand_list[index][1] = new_index
             self.inputpad.selected[0] = self.inputpad.selected[0] + code
-            self.inputpad.selected[1] = self.inputpad.selected[1] + "'" + result[ cand_list[index][0] ][ cand_list[index][1] ][0]
+            if self.inputpad.selected[1] == "" :
+                self.inputpad.selected[1] = result[ cand_list[index][0] ][ cand_list[index][1] ][0]
+            else :
+                self.inputpad.selected[1] = self.inputpad.selected[1] + "'" + result[ cand_list[index][0] ][ cand_list[index][1] ][0]
             self.inputpad.selected[2] = self.inputpad.selected[2] + result[ cand_list[index][0] ][ cand_list[index][1] ][1]
             #self.inputpad.selected[3].append( ( code, result, cand_list[index] ) )
             self.inputpad.code = self.remained_code
@@ -255,6 +258,12 @@ class CandPad( QtGui.QWidget ) :
         #else:
             #self.inputpad.backend.adjust( self.inputpad.selected[0][ )
         selected_text = self.inputpad.selected[2]
+
+        code = self.inputpad.selected[0]
+        pinyin = self.inputpad.selected[1]
+        hanzi = self.inputpad.selected[2]
+
+        self.inputpad.backend.insert( code, pinyin, hanzi )
         return selected_text
             
 

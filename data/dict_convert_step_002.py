@@ -38,7 +38,8 @@ for line in lines:
             pass
         else:
             ci_dict[code] = []
-        if len(ci_dict[code]) > 32:
+        #if len(ci_dict[code]) > 32:
+        if len( hanzi.decode("utf-8") ) > 5 :
             print "droped ci"
         else:
             node = [ pinyin, hanzi ]
