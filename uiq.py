@@ -249,6 +249,8 @@ class CandPad( QtGui.QWidget ) :
                 self.inputpad.set_mode( self.inputpad.MODE_INPUT )
             self.page_index = 0
             self.update()
+        if self.inputpad.selected[1].count("'") >= 8 :
+            self.inputpad.commit()
     def commit( self ) :
         #has checked
         #len( selected) must > 0
@@ -343,8 +345,8 @@ class InputPad( QtGui.QWidget ):
     MODE_INPUT = 1
     MODE_SELECT = 2
     def __init__( self, parent = None ):
-        #QtGui.QWidget.__init__( self, parent )
-        QtGui.QWidget.__init__( self, parent, QtCore.Qt.Dialog | QtCore.Qt.FramelessWindowHint )
+        QtGui.QWidget.__init__( self, parent )
+        #QtGui.QWidget.__init__( self, parent, QtCore.Qt.Dialog | QtCore.Qt.FramelessWindowHint )
 
         self.numpad = NumPad( self )
         self.numpad.move( 340, 0 )
@@ -383,6 +385,16 @@ class InputPad( QtGui.QWidget ):
             code = code + ch
             result = self.backend.query( code )
             self.cache.append( result )
+    def commit( self ) :
+        self.code = ""
+        self.recache()
+        if len( self.selected[0] ) > 0 :
+            self.textview.commit( self.candpad.commit() )
+        self.selected[0] = ""
+        self.selected[1] = ""
+        self.selected[2] = ""
+        self.candpad.page_index = 0
+        self.candpad.hide()
     @QtCore.Slot( int )
     def numpad_key_click( self, code ):
         time_stamp = time.time()
@@ -402,15 +414,7 @@ class InputPad( QtGui.QWidget ):
                         self.set_mode( self.MODE_SELECT )
                         self.candpad.update()
                     else:
-                        self.code = ""
-                        self.recache()
-                        if len( self.selected[0] ) > 0 :
-                            self.textview.commit( self.candpad.commit() )
-                        self.selected[0] = ""
-                        self.selected[1] = ""
-                        self.selected[2] = ""
-                        self.candpad.page_index = 0
-                        self.candpad.hide()
+                        self.commit()
                 else:
                     self.code = ""
                     self.recache()

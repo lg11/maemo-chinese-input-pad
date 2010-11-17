@@ -132,6 +132,7 @@ class Backend():
         return result
 
     def close( self ):
+        remove_phrase = []
         for temp_index in range( len( self.temp_phrase_list ) ) :
             node = self.temp_phrase_list[temp_index]
             code = node[0]
@@ -171,8 +172,7 @@ class Backend():
                 self.db[1][code] = dumps( item )
             else :
                 print "remove temp phrase"
-                self.temp_phrase_list.pop( temp_index )
-                self.db[1]["0"] = dumps( self.temp_phrase_list )
+                remove_phrase.append( self.temp_phrase_list[temp_index] )
                 item.pop( index )
                 if len( item ) > 1 :
                     if code in self.cache[1].keys() :
@@ -183,8 +183,9 @@ class Backend():
                         self.cache[1].pop( code )
                     self.db[1].pop( code )
 
-            
-
+        for phrase in remove_phrase :
+            self.temp_phrase_list.remove( phrase )
+        self.db[1]["0"] = dumps( self.temp_phrase_list )
         self.cache = ( {}, {} )
         self.db[1]["0"] = dumps( self.temp_phrase_list )
         self.db[0].close()
