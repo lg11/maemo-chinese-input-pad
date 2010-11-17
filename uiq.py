@@ -36,11 +36,12 @@ class CandPad( QtGui.QWidget ) :
     LABEL_WIDTH = 321
     LABEL_HEIGHT = 30
     CAND_LABEL_WIDTH = 105
-    CAND_LABEL_HEIGHT = 75
+    CAND_LABEL_HEIGHT = 55
     CAND_LENGTH = 6
 
     def __init__( self, parent = None, inputpad = None ):
-        QtGui.QWidget.__init__( self, parent )
+        #QtGui.QWidget.__init__( self, parent )
+        QtGui.QWidget.__init__( self, parent, QtCore.Qt.Dialog | QtCore.Qt.FramelessWindowHint | QtCore.Qt.X11BypassWindowManagerHint )
         #self.setFixedHeight( 600 )
         style_string = ""
         style_string = style_string + "QWidget { border: 1px solid darkgray; border-radius: 8px; background-color: lightgray }"
@@ -178,31 +179,38 @@ class CandPad( QtGui.QWidget ) :
             cand_text = ""
             if i < len( cand_list ):
                 if i == 0:
-                    cand_text = "<font color=blue>" + result[ cand_list[i][0] ][ cand_list[i][1] ][1].decode("utf-8") + "</font>"
+                    #cand_text = "<font color=blue>" + result[ cand_list[i][0] ][ cand_list[i][1] ][1].decode("utf-8") + "</font>"
+                    cand_text = result[ cand_list[i][0] ][ cand_list[i][1] ][1].decode("utf-8")
                 else:
-                    cand_text = "<font color=black>" + result[ cand_list[i][0] ][ cand_list[i][1] ][1].decode("utf-8") + "</font>"
+                    #cand_text = "<font color=black>" + result[ cand_list[i][0] ][ cand_list[i][1] ][1].decode("utf-8") + "</font>"
+                    cand_text = result[ cand_list[i][0] ][ cand_list[i][1] ][1].decode("utf-8")
             self.cand_label[i].setText( cand_text )
 
         pinyin_text_list = []
         hanzi_text_list = []
         if len( self.inputpad.selected[0] ) > 0 :
             selected_text = self.inputpad.selected[2]
-            pinyin_text_list.append( "<font color=black>" + selected_text.decode("utf-8") + "</font>" )
+            #pinyin_text_list.append( "<font color=black>" + selected_text.decode("utf-8") + "</font>" )
+            pinyin_text_list.append( selected_text.decode("utf-8") )
         if len( cand_list ) > 0 :
             pinyin = result[ cand_list[0][0] ][ cand_list[0][1] ][0]
             #hanzi = result[ cand_list[0][0] ][ cand_list[0][1] ][1].decode("utf-8")
             if self.inputpad.mode == self.inputpad.MODE_INPUT :
-                pinyin_text_list.append( "<font color=blue>" + pinyin + "</font>" )
+                #pinyin_text_list.append( "<font color=blue>" + pinyin + "</font>" )
+                pinyin_text_list.append( pinyin )
                 #hanzi_text_list.append( "<font color=blue>" + hanzi + "</font>" )
             elif self.inputpad.mode == self.inputpad.MODE_SELECT :
-                pinyin_text_list.append( "<font color=white style=\"background-color: blue\">" + pinyin + "</font>" )
+                #pinyin_text_list.append( "<font color=white style=\"background-color: blue\">" + pinyin + "</font>" )
+                pinyin_text_list.append( pinyin )
                 #hanzi_text_list.append( "<font color=white style=\"background-color: blue\">" + hanzi + "</font>" )
 
         if len( remained_code ) > 0 :
-            pinyin_text_list.append( "<font color=red>" + remained_code + "</font>" )
+            #pinyin_text_list.append( "<font color=red>" + remained_code + "</font>" )
+            pinyin_text_list.append( remained_code )
             #hanzi_text_list.append( "<font color=red>" + remained_code + "</font>" )
 
-        self.pinyin_label.setText( "<font color=green>'</font>".join( pinyin_text_list ) )
+        #self.pinyin_label.setText( "<font color=green>'</font>".join( pinyin_text_list ) )
+        self.pinyin_label.setText( "'".join( pinyin_text_list ) )
         #self.hanzi_label.setText( "<font color=green>'</font>".join( hanzi_text_list ) )
 
         self.cand_list = cand_list
@@ -251,6 +259,15 @@ class CandPad( QtGui.QWidget ) :
             self.update()
         if self.inputpad.selected[1].count("'") >= 8 :
             self.inputpad.commit()
+            if len( self.inputpad.code ) > 0 :
+                if self.check() :
+                    self.inputpad.set_mode( self.MODE_SELECT )
+                    self.update()
+                else:
+                    self.inputpad.code = ""
+                    self.inputpad.recache()
+                    self.hide()
+
     def commit( self ) :
         #has checked
         #len( selected) must > 0
@@ -284,10 +301,10 @@ class TextView( QtGui.QWidget ) :
     @QtCore.Slot()
     def move_candpad(self):
         rect = self.textedit.cursorRect()
-        y = rect.y() + rect.height()
-        if y < 35:
-            y = 35
-        self.candpad.move( 0, y )
+        y = rect.y() + rect.height() + 85
+        if y < 115:
+            y = 115
+        self.candpad.move( 5, y )
     @QtCore.Slot( str )
     def commit( self, text ):
         self.textedit.insertPlainText( text.decode("utf-8") )
@@ -307,18 +324,22 @@ class NumPad( QtGui.QWidget ):
         QtGui.QWidget.__init__( self, parent )
         
         self.num_button = []
+        self.num_button_label = []
         #check button
         button = NumPadKey( self, self.CODE_CHECK )
+        button.setText( "CHECK" )
         button.resize( self.BUTTON_WIDTH, self.BUTTON_HEIGHT_LITE )
         button.move( 0, 0 )
         button.key_clicked.connect( self.key_click )
         #backspace button
         button = NumPadKey( self, self.CODE_BACKSPACE )
+        button.setText( "BACKSPACE" )
         button.resize( self.BUTTON_WIDTH * 2, self.BUTTON_HEIGHT_LITE )
         button.move( self.BUTTON_WIDTH, 0 )
         button.key_clicked.connect( self.key_click )
         #mode button
         button = NumPadKey( self, self.CODE_MODE )
+        button.setText( "MODE" )
         button.resize( self.BUTTON_WIDTH, self.BUTTON_HEIGHT_LITE )
         button.move( self.BUTTON_WIDTH * 2, self.BUTTON_HEIGHT * 3 + self.BUTTON_HEIGHT_LITE )
         button.key_clicked.connect( self.key_click )
@@ -327,7 +348,13 @@ class NumPad( QtGui.QWidget ):
         button.resize( self.BUTTON_WIDTH * 2, self.BUTTON_HEIGHT_LITE )
         button.move( 0, self.BUTTON_HEIGHT * 3 + self.BUTTON_HEIGHT_LITE )
         button.key_clicked.connect( self.key_click )
+        label = QtGui.QLabel( button )
+        label.setAlignment( QtCore.Qt.AlignCenter )
+        layout = QtGui.QVBoxLayout()
+        button.setLayout( layout )
+        layout.addWidget( label )
         self.num_button.append( button )
+        self.num_button_label.append( label )
         #button 1 - 9
         for i in range(3):
             for j in range(3):
@@ -335,7 +362,26 @@ class NumPad( QtGui.QWidget ):
                 button.resize( self.BUTTON_WIDTH, self.BUTTON_HEIGHT )
                 button.move( self.BUTTON_WIDTH * j, self.BUTTON_HEIGHT * i + self.BUTTON_HEIGHT_LITE )
                 button.key_clicked.connect( self.key_click )
+                label = QtGui.QLabel( button )
+                label.setAlignment( QtCore.Qt.AlignCenter )
+                layout = QtGui.QVBoxLayout()
+                button.setLayout( layout )
+                layout.addWidget( label )
                 self.num_button.append( button )
+                self.num_button_label.append( label )
+                label.setText( str( i*3+j+1 ) + "                " )
+        self.num_button[0].setText("            SPACE")
+        self.num_button_label[0].setText("0                ")
+        self.num_button[1].setText("Ctrl")
+        self.num_button[2].setText("abc")
+        self.num_button[3].setText("def")
+        self.num_button[4].setText("ghi")
+        self.num_button[5].setText("jkl")
+        self.num_button[6].setText("mno")
+        self.num_button[7].setText("pqrs")
+        self.num_button[8].setText("tuv")
+        self.num_button[9].setText("wxyz")
+
 
     @QtCore.Slot(int)
     def key_click( self, code ):
@@ -387,6 +433,7 @@ class InputPad( QtGui.QWidget ):
             self.cache.append( result )
     def commit( self ) :
         #self.code = ""
+        #self.recache()
         if len( self.selected[0] ) > 0 :
             self.textview.commit( self.candpad.commit() )
         self.selected[0] = ""
@@ -395,9 +442,10 @@ class InputPad( QtGui.QWidget ):
         self.candpad.page_index = 0
         if len( self.code ) > 0 :
             self.recache()
-            #pass
+            self.candpad.update()
         else:
             self.candpad.hide()
+        #self.candpad.hide()
     @QtCore.Slot( int )
     def numpad_key_click( self, code ):
         time_stamp = time.time()
@@ -417,17 +465,16 @@ class InputPad( QtGui.QWidget ):
                         self.set_mode( self.MODE_SELECT )
                         self.candpad.update()
                     else:
+                        self.code = ""
+                        self.recache()
                         self.commit()
+                        self.set_mode( self.MODE_INPUT )
                 else:
-                    self.code = ""
-                    self.recache()
                     if len( self.selected[0] ) > 0 :
-                        self.textview.commit( self.candpad.commit() )
-                    self.selected[0] = ""
-                    self.selected[1] = ""
-                    self.selected[2] = ""
-                    self.candpad.page_index = 0
-                    self.candpad.hide()
+                        self.code = ""
+                        self.recache()
+                        self.commit()
+                        self.set_mode( self.MODE_INPUT )
             elif code == self.numpad.CODE_BACKSPACE :
                 if len( self.code ) > 0 :
                     self.code = self.code[:-1]

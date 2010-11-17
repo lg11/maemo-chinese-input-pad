@@ -28,7 +28,7 @@ class Backend():
         item = result[index]
         if flag > 0 and len( item ) > 2 :
             #print item
-            item[2] = item[2] * 3
+            item[2] = ( item[2] + 1 ) * 3
             #print item
             if item[2] > 100 :
                 temp_index = 0
