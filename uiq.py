@@ -33,9 +33,9 @@ class Conn( dbus.service.Object ):
         pass
 
 class CandPad( QtGui.QWidget ) :
-    LABEL_WIDTH = 321
+    LABEL_WIDTH = 325
     LABEL_HEIGHT = 30
-    CAND_LABEL_WIDTH = 105
+    CAND_LABEL_WIDTH = 110
     CAND_LABEL_HEIGHT = 55
     CAND_LENGTH = 6
 
@@ -49,14 +49,14 @@ class CandPad( QtGui.QWidget ) :
         #self.setStyleSheet( style_string )
 
         self.layout = QtGui.QVBoxLayout()
-        self.layout.setSpacing(1)
-        self.layout.setContentsMargins( 3, 3, 3, 3 )
+        self.layout.setSpacing(0)
+        self.layout.setContentsMargins( 0, 0, 0, 0 )
         self.setLayout( self.layout )
 
         self.code_frame = QtGui.QWidget( self )
         self.code_layout = QtGui.QVBoxLayout()
         self.code_layout.setSpacing(0)
-        self.code_layout.setContentsMargins( 3, 3, 3, 3 )
+        self.code_layout.setContentsMargins( 0, 0, 0, 0 )
         self.code_frame.setLayout( self.code_layout )
 
         self.pinyin_label = QtGui.QLabel( self.code_frame )
@@ -72,8 +72,8 @@ class CandPad( QtGui.QWidget ) :
 
         self.cand_frame = QtGui.QWidget( self )
         self.cand_layout = QtGui.QGridLayout()
-        self.cand_layout.setSpacing(1)
-        self.cand_layout.setContentsMargins( 3, 3, 3, 3 )
+        self.cand_layout.setSpacing(0)
+        self.cand_layout.setContentsMargins( 0, 0, 0, 0 )
         self.cand_frame.setLayout( self.cand_layout )
 
         self.cand_label = []
@@ -88,6 +88,10 @@ class CandPad( QtGui.QWidget ) :
 
         self.layout.addWidget( self.code_frame )
         self.layout.addWidget( self.cand_frame )
+
+        self.normal_font = QtGui.QFont()
+        self.underlined_font = QtGui.QFont()
+        self.underlined_font.setUnderline( True )
 
         self.inputpad = inputpad
 
@@ -179,10 +183,14 @@ class CandPad( QtGui.QWidget ) :
             cand_text = ""
             if i < len( cand_list ):
                 if self.inputpad.mode == self.inputpad.MODE_SELECT :
-                    cand_text = ">" + result[ cand_list[i][0] ][ cand_list[i][1] ][1].decode("utf-8") + "<"
+                    cand_text = result[ cand_list[i][0] ][ cand_list[i][1] ][1].decode("utf-8")
                 else:
                     cand_text = result[ cand_list[i][0] ][ cand_list[i][1] ][1].decode("utf-8")
             self.cand_label[i].setText( cand_text )
+            if self.inputpad.mode == self.inputpad.MODE_SELECT :
+                self.cand_label[i].setFont( self.underlined_font )
+            else :
+                self.cand_label[i].setFont( self.normal_font )
 
         pinyin_text_list = []
         hanzi_text_list = []
@@ -192,12 +200,8 @@ class CandPad( QtGui.QWidget ) :
         if len( cand_list ) > 0 :
             pinyin = result[ cand_list[0][0] ][ cand_list[0][1] ][0]
             #hanzi = result[ cand_list[0][0] ][ cand_list[0][1] ][1].decode("utf-8")
-            if self.inputpad.mode == self.inputpad.MODE_INPUT :
-                pinyin_text_list.append( pinyin )
-                #hanzi_text_list.append( hanzi )
-            elif self.inputpad.mode == self.inputpad.MODE_SELECT :
-                pinyin_text_list.append( pinyin )
-                #hanzi_text_list.append( hanzi )
+            pinyin_text_list.append( pinyin )
+            #hanzi_text_list.append( hanzi )
 
         if len( remained_code ) > 0 :
             pinyin_text_list.append( remained_code )
@@ -205,6 +209,8 @@ class CandPad( QtGui.QWidget ) :
 
         self.pinyin_label.setText( "'".join( pinyin_text_list ) )
         #self.hanzi_label.setText( "'".join( hanzi_text_list ) )
+        #if self.inputpad.mode == self.inputpad.MODE_SELECT :
+            #self.pinyin_label.setSelection( 0, 1 )
 
         self.cand_list = cand_list
         #print "candpad update cast", time.time() - time_stamp, "second"
@@ -260,6 +266,48 @@ class CandPad( QtGui.QWidget ) :
                     self.inputpad.code = ""
                     self.inputpad.recache()
                     self.hide()
+    def select_zi( self, index ) :
+        cand_list = self.cand_list
+        if index < len( self.cand_list ) : 
+            #node = self.result[ cand_list[index][0], cand_list[index][1] ]
+            if cand_list[index][0] == 0 :
+                #is zi
+                self.select( index )
+            else :
+                if len( self.remained_code ) <= 0:
+                    code = self.inputpad.code
+                else:
+                    code = self.inputpad.code[:-len(self.remained_code)]
+                pinyin = result[ cand_list[index][0] ][ cand_list[index][1] ][0]
+                code_length = pinyin.find( "'" )
+                #hanzi = result[ cand_list[index][0] ][ cand_list[index][1] ][1]
+                result = self.result
+                new_index = self.inputpad.backend.adjust( code, cand_list[index][0], cand_list[index][1] )
+                cand_list[index][1] = new_index
+                self.inputpad.selected[0] = self.inputpad.selected[0] + code
+                if self.inputpad.selected[1] == "" :
+                    self.inputpad.selected[1] = result[ cand_list[index][0] ][ cand_list[index][1] ][0]
+                else :
+                    self.inputpad.selected[1] = self.inputpad.selected[1] + "'" + result[ cand_list[index][0] ][ cand_list[index][1] ][0]
+                self.inputpad.selected[2] = self.inputpad.selected[2] + result[ cand_list[index][0] ][ cand_list[index][1] ][1]
+                #self.inputpad.selected[3].append( ( code, result, cand_list[index] ) )
+                self.inputpad.code = self.remained_code
+                self.inputpad.recache()
+                self._check_result()
+                if len( self.inputpad.code ) <= 0 or not ( self.result[0] or self.result[1] ) :
+                    self.inputpad.set_mode( self.inputpad.MODE_INPUT )
+                self.page_index = 0
+                self.update()
+            if self.inputpad.selected[1].count("'") >= 8 :
+                self.inputpad.commit()
+                if len( self.inputpad.code ) > 0 :
+                    if self.check() :
+                        self.inputpad.set_mode( self.MODE_SELECT )
+                        self.update()
+                    else:
+                        self.inputpad.code = ""
+                        self.inputpad.recache()
+                        self.hide()
 
     def commit( self ) :
         #has checked
@@ -297,7 +345,7 @@ class TextView( QtGui.QWidget ) :
         y = rect.y() + rect.height() + 85
         if y < 115:
             y = 115
-        self.candpad.move( 5, y )
+        self.candpad.move( 0, y )
     @QtCore.Slot( str )
     def commit( self, text ):
         self.textedit.insertPlainText( text.decode("utf-8") )
@@ -312,6 +360,7 @@ class NumPad( QtGui.QWidget ):
     CODE_MODE = 12
 
     key_clicked = QtCore.Signal( int )
+    key_longpressed = QtCore.Signal( int )
     
     def __init__( self, parent = None ):
         QtGui.QWidget.__init__( self, parent )
@@ -324,23 +373,27 @@ class NumPad( QtGui.QWidget ):
         button.resize( self.BUTTON_WIDTH, self.BUTTON_HEIGHT_LITE )
         button.move( 0, 0 )
         button.key_clicked.connect( self.key_click )
+        button.key_longpressed.connect( self.key_longpress )
         #backspace button
         button = NumPadKey( self, self.CODE_BACKSPACE )
         button.setText( "BACKSPACE" )
         button.resize( self.BUTTON_WIDTH * 2, self.BUTTON_HEIGHT_LITE )
         button.move( self.BUTTON_WIDTH, 0 )
         button.key_clicked.connect( self.key_click )
+        button.key_longpressed.connect( self.key_longpress )
         #mode button
         button = NumPadKey( self, self.CODE_MODE )
         button.setText( "MODE" )
         button.resize( self.BUTTON_WIDTH, self.BUTTON_HEIGHT_LITE )
         button.move( self.BUTTON_WIDTH * 2, self.BUTTON_HEIGHT * 3 + self.BUTTON_HEIGHT_LITE )
         button.key_clicked.connect( self.key_click )
+        button.key_longpressed.connect( self.key_longpress )
         #button 0
         button = NumPadKey( self, 0 )
         button.resize( self.BUTTON_WIDTH * 2, self.BUTTON_HEIGHT_LITE )
         button.move( 0, self.BUTTON_HEIGHT * 3 + self.BUTTON_HEIGHT_LITE )
         button.key_clicked.connect( self.key_click )
+        button.key_longpressed.connect( self.key_longpress )
         label = QtGui.QLabel( button )
         label.setAlignment( QtCore.Qt.AlignCenter )
         layout = QtGui.QVBoxLayout()
@@ -355,6 +408,7 @@ class NumPad( QtGui.QWidget ):
                 button.resize( self.BUTTON_WIDTH, self.BUTTON_HEIGHT )
                 button.move( self.BUTTON_WIDTH * j, self.BUTTON_HEIGHT * i + self.BUTTON_HEIGHT_LITE )
                 button.key_clicked.connect( self.key_click )
+                button.key_longpressed.connect( self.key_longpress )
                 label = QtGui.QLabel( button )
                 label.setAlignment( QtCore.Qt.AlignCenter )
                 layout = QtGui.QVBoxLayout()
@@ -375,10 +429,13 @@ class NumPad( QtGui.QWidget ):
         self.num_button[8].setText("tuv")
         self.num_button[9].setText("wxyz")
 
-
     @QtCore.Slot(int)
     def key_click( self, code ):
         self.key_clicked.emit( code )
+    @QtCore.Slot(int)
+    def key_longpress( self, code ):
+        #print "key_longpress"
+        self.key_longpressed.emit( code )
 
 class InputPad( QtGui.QWidget ): 
     MODE_INPUT = 1
@@ -403,6 +460,7 @@ class InputPad( QtGui.QWidget ):
         self.set_mode( self.MODE_INPUT )
 
         self.numpad.key_clicked.connect( self.numpad_key_click )
+        self.numpad.key_longpressed.connect( self.numpad_key_longpress )
 
         self.cache = []
         self.selected = []
@@ -503,6 +561,16 @@ class InputPad( QtGui.QWidget ):
                 self.candpad.page_index = 0
                 self.candpad.update()
         print "key_click cast", time.time() - time_stamp, "second"
+    @QtCore.Slot( int )
+    def numpad_key_longpress( self, code ):
+        time_stamp = time.time()
+        if self.mode == self.MODE_INPUT :
+            pass
+        if self.mode == self.MODE_SELECT :
+            if code >= 1 and code <= 6 :
+                #print "select"
+                self.candpad.select_zi( code - 1 )
+        print "key_longpress cast", time.time() - time_stamp, "second"
                 
 
 
