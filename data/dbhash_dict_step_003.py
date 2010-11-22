@@ -18,8 +18,13 @@ def phrase( cur, flag ) :
     for code in code_set :
         count[0] = count[0] + 1
         rs = cur.execute( sql_sentence, code )
+        rl = [ [], [] ]
+        for r in rs :
+            node = [ r[0].encode( "utf-8" ), r[1].encode( "utf-8" ) ]
+            print node[0], node[1]
+            rl[1].append( node )
         print "dump", code[0], count[0], "/", count[1]
-        byte_stream = dumps( list( rs ) )
+        byte_stream = dumps( rl )
         result.append( ( code[0], byte_stream,  ) )
 
     return result
@@ -40,9 +45,9 @@ def insert( db, flag, result ) :
 
 def create_db() :
     db = []
-    db.append( dbhash.open("dict.zi", "c") )
-    db.append( dbhash.open("dict.ci", "c") )
-    db.append( dbhash.open("dict.misc", "c") )
+    db.append( dbhash.open("dict.0", "c") )
+    db.append( dbhash.open("dict.1", "c") )
+    db.append( dbhash.open("dict.2", "c") )
     return db
 
 def close_db( db ) :
@@ -51,7 +56,7 @@ def close_db( db ) :
     db[2].close()
 
 def phrase_raw_dict() :
-    conn = sqlite3.connect( "dict.db" )
+    conn = sqlite3.connect( "temp_buffer_004" )
     cur = conn.cursor()
     zi = phrase( cur, 0 )
     ci = phrase( cur, 1 )

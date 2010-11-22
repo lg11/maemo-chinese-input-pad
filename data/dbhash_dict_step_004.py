@@ -3,66 +3,65 @@
 import string
 from marshal import dumps, loads
 import dbhash
+import time
 
-file = open("buffer_002", "r")
-lines = file.readlines()
+def phrase_incomplete_code( db ) :
+    print "read code set"
+    code_set = set.union( set( db[0].keys() ), set( db[1].keys() ) )
+    print "read code list"
+    code_list = list( code_set )
+    print "sort code list"
+    #code_list.sort( key = str.lower )
+    code_list.sort()
 
-zi_db = dbhash.open("db_zi", "c")
-ci_db = dbhash.open("db_ci", "c")
+    incomplete_code_set = set()
+    incomplete_code_dict = {}
+    count = [ 0, len( code_list ) ]
+    for code in code_list :
+        index = 1
+        flag = False
+        while ( not flag ) and index < len( code ) :
+            incomplete_code = code[:-index]
+            index = index + 1
+            if \
+                    ( not ( incomplete_code in incomplete_code_set ) ) \
+                    and \
+                    ( not ( incomplete_code in code_set ) ) \
+                    :
+                incomplete_code_set.add( incomplete_code )
+                incomplete_code_dict[incomplete_code] = code
+            else :
+                if incomplete_code in incomplete_code_set :
+                    old_code = incomplete_code_dict[incomplete_code]
+                    print "check code :", old_code, code
+                    if len( code ) < len( old_code ) :
+                        incomplete_code_dict[incomplete_code] = code
+                        print "update", old_code, "to", code
+                    elif len( code ) == len( old_code ) and code < old_code :
+                        incomplete_code_dict[incomplete_code] = code
+                        print "update", old_code, "to", code
+                    else :
+                        print "keeped"
+        count[0] = count[0] + 1
+        print "checked", code, count[0], "/", count[1]
+    byte_stream = dumps( incomplete_code_dict )
+    print "dumps done"
+    db[2]["0"] = byte_stream
+    print "write done"
 
-print "readed"
+def open_db() :
+    db = []
+    db.append( dbhash.open("dict.0", "r") )
+    db.append( dbhash.open("dict.1", "r") )
+    db.append( dbhash.open("dict.2", "w") )
+    return db
 
-ci_dict = {}
-zi_dict = {}
+def close_db( db ) :
+    db[0].close()
+    db[1].close()
+    db[2].close()
 
-i = 0
-for line in lines:
-    #if i < 10:
-    i = i + 1
-    line = line[:-1]
-    line = line.split()
-    code = line[1]
-    pinyin = line[2]
-    hanzi = line[3]
-    print i, "/", len(lines), ":", pinyin, hanzi
-    if len( hanzi.decode("utf-8") ) == 1 :
-        if code in zi_dict.keys():
-            pass
-        else:
-            zi_dict[code] = []
-        node = [ pinyin, hanzi ]
-        zi_dict[code].append( node )
-        print "zi"
-    elif len( hanzi.decode("utf-8") ) > 1 :
-        if code in ci_dict.keys():
-            pass
-        else:
-            ci_dict[code] = []
-        #if len(ci_dict[code]) > 32:
-        if len( hanzi.decode("utf-8") ) > 5 :
-            print "droped ci"
-        else:
-            node = [ pinyin, hanzi ]
-            ci_dict[code].append( node )
-            print "ci"
-    else:
-        print "error"
-
-print "dict created"
-
-i = 0
-for code in zi_dict.keys():
-    print i, "/", len(zi_dict.keys()), ":", code
-    i = i + 1
-    zi_db[code] = dumps( zi_dict[code] )
-
-zi_db.close()
-
-
-i = 0
-for code in ci_dict.keys():
-    print i, "/", len(ci_dict.keys()), ":", code
-    i = i + 1
-    ci_db[code] = dumps( ci_dict[code] )
-
-ci_db.close()
+if __name__ == "__main__" :
+    db = open_db()
+    phrase_incomplete_code( db )
+    close_db( db )
