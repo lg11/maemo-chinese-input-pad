@@ -8,8 +8,8 @@ QtCore.Slot = QtCore.pyqtSlot
 import dbus
 import dbus.service
 from dbus.mainloop.glib import DBusGMainLoop
-import sys
 
+import sys
 import time
 
 from backendq import Backend
@@ -42,33 +42,15 @@ class CandPad( QtGui.QWidget ) :
     def __init__( self, parent = None, inputpad = None ):
         #QtGui.QWidget.__init__( self, parent )
         QtGui.QWidget.__init__( self, parent, QtCore.Qt.Dialog | QtCore.Qt.FramelessWindowHint | QtCore.Qt.X11BypassWindowManagerHint )
-        #self.setFixedHeight( 600 )
-        style_string = ""
-        style_string = style_string + "QWidget { border: 1px solid darkgray; border-radius: 8px; background-color: lightgray }"
-        style_string = style_string + "QLabel { border: 0px; border-radius: 0px; }"
-        #self.setStyleSheet( style_string )
 
         self.layout = QtGui.QVBoxLayout()
         self.layout.setSpacing(0)
         self.layout.setContentsMargins( 0, 0, 0, 0 )
         self.setLayout( self.layout )
 
-        self.code_frame = QtGui.QWidget( self )
-        self.code_layout = QtGui.QVBoxLayout()
-        self.code_layout.setSpacing(0)
-        self.code_layout.setContentsMargins( 0, 0, 0, 0 )
-        self.code_frame.setLayout( self.code_layout )
-
-        self.pinyin_label = QtGui.QLabel( self.code_frame )
-        self.pinyin_label.setFixedHeight( self.LABEL_HEIGHT )
-        self.pinyin_label.setAlignment( QtCore.Qt.AlignCenter )
-        self.hanzi_label = QtGui.QLabel( self.code_frame )
-        self.hanzi_label.setFixedHeight( self.LABEL_HEIGHT )
-        self.hanzi_label.setAlignment( QtCore.Qt.AlignCenter )
-        self.code_layout.addWidget( self.pinyin_label )
-        self.code_layout.addWidget( self.hanzi_label )
-
-        self.hanzi_label.hide()
+        self.preedit_label = QtGui.QLabel( self )
+        self.preedit_label.setFixedHeight( self.LABEL_HEIGHT )
+        self.preedit_label.setAlignment( QtCore.Qt.AlignCenter )
 
         self.cand_frame = QtGui.QWidget( self )
         self.cand_layout = QtGui.QGridLayout()
@@ -86,7 +68,7 @@ class CandPad( QtGui.QWidget ) :
                 self.cand_layout.addWidget( label, i, j )
                 self.cand_label.append( label )
 
-        self.layout.addWidget( self.code_frame )
+        self.layout.addWidget( self.preedit_label )
         self.layout.addWidget( self.cand_frame )
 
         self.normal_font = QtGui.QFont()
@@ -95,11 +77,13 @@ class CandPad( QtGui.QWidget ) :
 
         self.inputpad = inputpad
 
+        self.cand_index = [ 0, 0 ]
         self.page_index = 0
         self.cand_list = []
         self.result = [ None, None ]
         self.remained_code = ""
-    def _check_result( self ):
+
+    def __check_result( self ):
         index = len( self.inputpad.cache )
         if index > 0:
             index = index - 1
@@ -119,7 +103,7 @@ class CandPad( QtGui.QWidget ) :
         self.remained_code = remained_code
 
     def check( self ):
-        self._check_result()
+        self.__check_result()
         if self.result[0] or self.result[1] :
             return True
         else :
@@ -128,11 +112,19 @@ class CandPad( QtGui.QWidget ) :
     def update( self ):
         #time_stamp = time.time()
 
-        self._check_result()
+        self.__check_result()
         result = self.result
         remained_code = self.remained_code
 
         cand_list = []
+        flag = False
+        index = 0
+        #if ( not flag ) and index < 6 :
+            #if index < 3 :
+                #if self.cand_index[0] < len( 
+
+                
+
         if result[0] or result[1]:
             if result[0] and result[1] :
                 base_index = self.page_index * self.CAND_LENGTH / 2
@@ -183,9 +175,9 @@ class CandPad( QtGui.QWidget ) :
             cand_text = ""
             if i < len( cand_list ):
                 if self.inputpad.mode == self.inputpad.MODE_SELECT :
-                    cand_text = result[ cand_list[i][0] ][ cand_list[i][1] ][1].decode("utf-8")
+                    cand_text = result[ cand_list[i][0] ][1][ cand_list[i][1] ][1].decode("utf-8")
                 else:
-                    cand_text = result[ cand_list[i][0] ][ cand_list[i][1] ][1].decode("utf-8")
+                    cand_text = result[ cand_list[i][0] ][1][ cand_list[i][1] ][1].decode("utf-8")
             self.cand_label[i].setText( cand_text )
             if self.inputpad.mode == self.inputpad.MODE_SELECT :
                 self.cand_label[i].setFont( self.underlined_font )
@@ -193,24 +185,21 @@ class CandPad( QtGui.QWidget ) :
                 self.cand_label[i].setFont( self.normal_font )
 
         pinyin_text_list = []
-        hanzi_text_list = []
         if len( self.inputpad.selected[0] ) > 0 :
             selected_text = self.inputpad.selected[2]
             pinyin_text_list.append( selected_text.decode("utf-8") )
         if len( cand_list ) > 0 :
-            pinyin = result[ cand_list[0][0] ][ cand_list[0][1] ][0]
-            #hanzi = result[ cand_list[0][0] ][ cand_list[0][1] ][1].decode("utf-8")
+            pinyin = result[ cand_list[0][0] ][1][ cand_list[0][1] ][0]
             pinyin_text_list.append( pinyin )
-            #hanzi_text_list.append( hanzi )
 
         if len( remained_code ) > 0 :
             pinyin_text_list.append( remained_code )
             #hanzi_text_list.append( remained_code )
 
-        self.pinyin_label.setText( "'".join( pinyin_text_list ) )
-        #self.hanzi_label.setText( "'".join( hanzi_text_list ) )
+        self.preedit_label.setText( "'".join( pinyin_text_list ) )
+        #self.preedit_label.setText( "'".join( hanzi_text_list ) )
         #if self.inputpad.mode == self.inputpad.MODE_SELECT :
-            #self.pinyin_label.setSelection( 0, 1 )
+            #self.preedit_label.setSelection( 0, 1 )
 
         self.cand_list = cand_list
         #print "candpad update cast", time.time() - time_stamp, "second"
@@ -251,7 +240,7 @@ class CandPad( QtGui.QWidget ) :
             #self.inputpad.selected[3].append( ( code, result, cand_list[index] ) )
             self.inputpad.code = self.remained_code
             self.inputpad.recache()
-            self._check_result()
+            self.__check_result()
             if len( self.inputpad.code ) <= 0 or not ( self.result[0] or self.result[1] ) :
                 self.inputpad.set_mode( self.inputpad.MODE_INPUT )
             self.page_index = 0
@@ -293,7 +282,7 @@ class CandPad( QtGui.QWidget ) :
                 #self.inputpad.selected[3].append( ( code, result, cand_list[index] ) )
                 self.inputpad.code = self.remained_code
                 self.inputpad.recache()
-                self._check_result()
+                self.__check_result()
                 if len( self.inputpad.code ) <= 0 or not ( self.result[0] or self.result[1] ) :
                     self.inputpad.set_mode( self.inputpad.MODE_INPUT )
                 self.page_index = 0

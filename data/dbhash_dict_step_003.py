@@ -18,9 +18,12 @@ def phrase( cur, flag ) :
     for code in code_set :
         count[0] = count[0] + 1
         rs = cur.execute( sql_sentence, code )
-        rl = [ [], [] ]
+        rl = [ set(), [], [] ]
         for r in rs :
-            node = [ r[0].encode( "utf-8" ), r[1].encode( "utf-8" ) ]
+            pinyin =  r[0].encode( "utf-8" )
+            hanzi = r[1].encode( "utf-8" )
+            rl[0].add(pinyin)
+            node = [ pinyin, hanzi ]
             print node[0], node[1]
             rl[1].append( node )
         print "dump", code[0], count[0], "/", count[1]

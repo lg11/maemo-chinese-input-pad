@@ -3,24 +3,83 @@
 from marshal import dumps, loads
 import dbhash
 
-#class Result():
-    #def __init__( self, result ):
+#import sys
+#import time
 
+def node_find( node, code ) :
+    index = 0
+    flag = False
+    while ( not flag ) and index < len( node[2] ) :
+        sub_node = node[2][index]
+        if sub_node[0] == code :
+            flag = True
+        else :
+            index = index + 1
+    if flag :
+        return index
+    else :
+        return -1
+
+def code_map_check( code_map_entry, code ) :
+    code_length = len( code )
+    index = 0
+    new_code = ""
+    vail_flag = True
+    node = code_map_entry
+    while index < code_length and vail_flag :
+        c = code[index]
+        map_index = node_find( node, c )
+        if map_index < 0 :
+            vail_flag = False
+        else :
+            new_code = new_code + c
+            node = node[2][map_index]
+            index = index + 1
+    if not vail_flag :
+        print "invail"
+        return ""
+    else :
+        # A* ! ... A_Star seek...
+        node_stack = [ node ]
+        code_stack = [ new_code ]
+        deeper_node_stack = []
+        deeper_code_stack = []
+        flag = False
+        while len( node_stack ) > 0 and not flag :
+            index = 0
+            while index < len( node_stack ) and not flag :
+                node = node_stack[index]
+                new_code = code_stack[index]
+                print new_code, node[0]
+                end_flag = node[1]
+                if end_flag :
+                    print "seeked"
+                    flag = True
+                else :
+                    for sub_node in node[2] :
+                        deeper_node_stack.append( sub_node )
+                        deeper_code_stack.append( new_code + sub_node[0] )
+                    index = index + 1
+            node_stack = deeper_node_stack
+            code_stack = deeper_code_stack
+            deeper_node_stack = []
+            deeper_code_stack = []
+        return new_code
 
 class Backend():
     def __init__( self ):
-        self.cache = ( {}, {} )
-        db_zi = dbhash.open( "data/db_zi", "w" )
-        db_ci = dbhash.open( "data/db_ci", "w" )
-        self.db = ( db_zi, db_ci )
-        self.code_set = ( set( db_zi.keys() ), set( db_ci.keys() ) )
-        if not "0" in self.code_set[1] :
-            #print "need create temp phrase list"
-            self.temp_phrase_list = []
-            self.db[1]["0"] = dumps( self.temp_phrase_list )
-        else :
-            #print "load temp phrase list"
-            self.temp_phrase_list = loads( self.db[1]["0"] )
+        self.db = []
+        self.db.append( dbhash.open( "data/dict.0", "w" ) )
+        self.db.append( dbhash.open( "data/dict.1", "w" ) )
+        self.db.append( dbhash.open( "data/dict.2", "w" ) )
+
+        self.cache = ( ( {}, set() ), ( {}, set() ) )
+        self.code_set = ( set( self.db[0].keys() ), set( self.db[1].keys() ) )
+        self.code_map_entry = loads( self.db[2]["0"] )
+
+        preload_code_set = loads( self.db[2]["1"] )
+        for code in preload_code_set :
+            self.cache[0][0][code] = loads( self.db[0][code] )
 
     def adjust( self, code, flag, index ):
         #print "code = ", code
@@ -109,25 +168,22 @@ class Backend():
             pass
     
     def query( self, code ):
-        result = [ None, None ]
+        def __query( flag, code ):
+            item = []
+            if code in self.code_set[flag]:
+                if self.cache[flag][0].has_key( code ):
+                    item = self.cache[flag][0][code]
+                else:
+                    item = loads( self.db[flag][code] )
+                    self.cache[flag][0][code] = item
+            return item
 
-        item = None
-        if code in self.code_set[0]:
-            if code in self.cache[0].keys():
-                item = self.cache[0][code]
-            else:
-                item = loads( self.db[0][code] )
-                self.cache[0][code] = item
-        result[0] = item
+        result = [ __query( 0, code ), __query( 1, code ) ]
 
-        item = None
-        if code in self.code_set[1]:
-            if code in self.cache[1].keys():
-                item = self.cache[1][code]
-            else:
-                item = loads( self.db[1][code] )
-                self.cache[1][code] = item
-        result[1] = item
+        if len( result[0] ) <= 0 and len( result[1] ) <= 0 :
+            code = code_map_check( self.code_map_entry, code )
+            if len( code ) > 0 :
+                result = [ __query( 0, code ), __query( 1, code ) ]
 
         return result
 
@@ -197,13 +253,21 @@ if __name__ == "__main__" :
     import sys
     import time
     backend = Backend()
-    #print "backend created"
+    print "backend created"
     while True :
         code = sys.stdin.readline()[:-1]
         time_stamp = time.time()
         result = backend.query( code )
-        print "query cast", time.time() - time_stamp, "second"
-        print result
-
-
+        time_stamp = time.time() - time_stamp
+        if len( result[0] ) > 0 :
+            print "result count", len( result[0][1] )
+            for node in result[0][1] :
+                print node[0], node[1]
+                pass
+        if len( result[1] ) > 0 :
+            print "result count", len( result[1][1] )
+            for node in result[1][1] :
+                print node[0], node[1]
+                pass
+        print "query cast", time_stamp, "second"
 
