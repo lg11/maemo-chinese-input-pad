@@ -5,14 +5,6 @@ import dbhash
 import sys
 import time
 
-def opendb() :
-    time_stamp = time.time()
-    db = []
-    db.append( dbhash.open("dict.0", "w") )
-    db.append( dbhash.open("dict.1", "w") )
-    db.append( dbhash.open("dict.2", "w") )
-    print "opend cast", time.time() - time_stamp, "s"
-    return db
 
 def node_find( node, code ) :
     index = 0
@@ -28,41 +20,39 @@ def node_find( node, code ) :
     else :
         return -1
 
-def check_code_map( code, code_map_entry ) :
+def code_map_find( code_map_entry, code ) :
     code_length = len( code )
-    index = 0
-    new_code = ""
-    vail_flag = True
+    code_index = 0
+    vailed_flag = True
     node = code_map_entry
-    while index < code_length and vail_flag :
-        c = code[index]
-        map_index = node_find( node, c )
-        if map_index < 0 :
-            vail_flag = False
+    while code_index < code_length and vailed_flag :
+        c = code[code_index]
+        index = node_find( node, c )
+        if index < 0 :
+            vailed_flag = False
         else :
-            new_code = new_code + c
-            node = node[2][map_index]
-            index = index + 1
-    if not vail_flag :
-        print "invail"
-        return ""
+            node = node[2][index]
+            code_index = code_index + 1
+    if not vailed_flag :
+        return [ code, [] ]
+    elif len( node[1] ) > 0 :
+        return [ code, node[1] ]
     else :
-        # A* ! ... A_Star seek...
+        # A* ! ... this is A_Star seek ...
         node_stack = [ node ]
-        code_stack = [ new_code ]
+        code_stack = [ code ]
         deeper_node_stack = []
         deeper_code_stack = []
-        flag = False
-        while len( node_stack ) > 0 and not flag :
+        seeked_flag = False
+        while len( node_stack ) > 0 and ( not seeked_flag ) :
             index = 0
-            while index < len( node_stack ) and not flag :
+            while index < len( node_stack ) and not seeked_flag :
                 node = node_stack[index]
                 new_code = code_stack[index]
                 print new_code, node[0]
-                end_flag = node[1]
-                if end_flag :
+                if len( node[1] ) > 0 :
                     print "seeked"
-                    flag = True
+                    seeked_flag = True
                 else :
                     for sub_node in node[2] :
                         deeper_node_stack.append( sub_node )
@@ -72,47 +62,29 @@ def check_code_map( code, code_map_entry ) :
             code_stack = deeper_code_stack
             deeper_node_stack = []
             deeper_code_stack = []
-        return new_code
+        if seeked_flag :
+            return [ code, node[1] ]
+        else :
+            print "unknown error"
 
 def check( db ) :
     time_stamp = time.time()
-    code_set = []
-    code_set.append( db[0].keys() )
-    code_set.append( db[1].keys() )
-    code_map_entry = loads( db[2]["0"] )
-    print "ready"
+    code_map_entry = loads( db["0"] )
+    print "loads cast", time.time() - time_stamp, "s"
     while( 1 ) :
         code = sys.stdin.readline()[:-1]
         flag = -1
-        if code in code_set[0] :
-            flag = 0
-        elif code in code_set[1] :
-            flag = 1
-        else :
-            code = check_code_map( code, code_map_entry )
-            if len( code ) > 0 :
-                if code in code_set[0] :
-                    flag = 0
-                elif code in code_set[1] :
-                    flag = 1
-                else :
-                    "error"
-            else :
-                "error"
+        time_stamp = time.time()
+        result = code_map_find( code_map_entry, code )
+        print "query cast", time.time() - time_stamp, "s"
+        print result
 
-        if flag < 0 :
-            print "invailed code"
-        else:
-            time_stamp = time.time()
-            bs = db[flag][code]
-            print "query cast", time.time() - time_stamp, "s"
-            time_stamp = time.time()
-            s = loads( bs )
-            print "loads cast", time.time() - time_stamp, "s"
-            print s[1][0][0], s[1][0][1]
-            #for node in s[1] :
-                #print node[0], node[1]
+def open_db() :
+    time_stamp = time.time()
+    db = dbhash.open("dict.0", "w")
+    print "opend cast", time.time() - time_stamp, "s"
+    return db
 
 if __name__ == "__main__" :
-    db = opendb()
+    db = open_db()
     check( db )
