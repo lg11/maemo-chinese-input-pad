@@ -6,7 +6,7 @@ import dbhash
 #import sys
 #import time
 
-def node_find( node, code ) :
+def __node_find( node, code ) :
     index = 0
     flag = False
     while ( not flag ) and index < len( node[2] ) :
@@ -20,66 +20,150 @@ def node_find( node, code ) :
     else :
         return -1
 
-def code_map_check( code_map_entry, code ) :
+def node_find( node, code ) :
     code_length = len( code )
-    index = 0
-    new_code = ""
-    vail_flag = True
-    node = code_map_entry
-    while index < code_length and vail_flag :
-        c = code[index]
-        map_index = node_find( node, c )
-        if map_index < 0 :
-            vail_flag = False
+    code_index = 0
+    vailed_flag = True
+    while code_index < code_length and vailed_flag :
+        c = code[code_index]
+        seek_index = __node_find( node, c )
+        if seek_index < 0 :
+            vailed_flag = False
         else :
-            new_code = new_code + c
-            node = node[2][map_index]
-            index = index + 1
-    if not vail_flag :
-        print "invail"
-        return ""
+            node = node[2][seek_index]
+            code_index = code_index + 1
+    if not vailed_flag :
+        return None
     else :
-        # A* ! ... A_Star seek...
-        node_stack = [ node ]
-        code_stack = [ new_code ]
-        deeper_node_stack = []
-        deeper_code_stack = []
-        flag = False
-        while len( node_stack ) > 0 and not flag :
-            index = 0
-            while index < len( node_stack ) and not flag :
-                node = node_stack[index]
-                new_code = code_stack[index]
-                print new_code, node[0]
-                end_flag = node[1]
-                if end_flag :
-                    print "seeked"
-                    flag = True
-                else :
+        return node
+
+def node_seek( node, code ) :
+    # A* ! ... A_Star seek...
+    result = []
+    node_list = [ node ]
+    code_list = [ code ]
+    node_stack = []
+    code_stack = []
+    while len( node_list ) > 0 and len( result ) < 1 :
+        for i in range( len( node_list ) ) :
+            node = node_list[i]
+            code = code_list[i]
+            if len( node[1] ) > 0 :
+                #print "seeked"
+                result.append( [ code, node[1] ] )
+            else :
+                if len( result ) < 1 :
                     for sub_node in node[2] :
-                        deeper_node_stack.append( sub_node )
-                        deeper_code_stack.append( new_code + sub_node[0] )
-                    index = index + 1
-            node_stack = deeper_node_stack
-            code_stack = deeper_code_stack
-            deeper_node_stack = []
-            deeper_code_stack = []
-        return new_code
+                        node_stack.append( sub_node )
+                        code_stack.append( code + sub_node[0] )
+        node_list = node_stack
+        code_list = code_stack
+        node_stack = []
+        code_stack = []
+
+    return result
+        
+def code_map_query( code_map_entry, code ) :
+    node = node_find( code_map_entry, code )
+    if node == None :
+        return []
+    else :
+        if len( node[1] ) < 1 :
+            result = node_seek( node, code )
+            return result
+        else :
+            return [ [ code, node[1] ] ]
+
+def __query_result_get_highest_freq_phrase( query_result, index_list ) :
+    highest_index = -1
+    highest_freq = -1
+    #print "check start"
+    for index in range( len( query_result ) ) :
+        result = query_result[index]
+        code = result[0]
+        pinyin = result[1]
+        node_list = result[2]
+        #print "check", index, code, pinyin
+        node_index = index_list[index]
+        if node_index < len( node_list ) :
+            node = node_list[node_index]
+            freq = node[1]
+            if freq > highest_freq :
+                highest_freq = freq
+                highest_index = index
+                #print highest_index
+    if highest_index >= 0 :
+        node_index = index_list[highest_index]
+        index_list[highest_index] = node_index + 1
+        return [ highest_index, node_index ]
+    else :
+        return None
+
+def __cand_print_node( cand, index, node_index ) :
+    query_result = cand[1]
+    result = query_result[index]
+    code = result[0]
+    pinyin = result[1]
+    node_list = result[2]
+    node = node_list[node_index]
+    hanzi = node[0]
+    freq = node[1]
+    print code, pinyin, hanzi, freq
+
+def __cand_gen_node( cand, index, node_index ) :
+    query_result = cand[1]
+    result = query_result[index]
+    code = result[0]
+    pinyin = result[1]
+    node_list = result[2]
+    node = node_list[node_index]
+    hanzi = node[0]
+    freq = node[1]
+    return [ pinyin, hanzi ]
+
+def cand_gen( cand, request_length ) :
+    cand_list = cand[0]
+    query_result = cand[1]
+    #for r in query_result :
+        #print r[0], r[1]
+    index_list = cand[2]
+    cand_list_length = len( cand_list )
+    if cand_list_length < request_length :
+        index = 0
+        flag = True
+        while index < ( request_length - cand_list_length ) and flag :
+            r = __query_result_get_highest_freq_phrase( query_result, index_list )
+            if r == None :
+                flag = False
+            else :
+                cand_list.append( r )
+                #print "appended"
+            index = index + 1
+        cand_list_length = len( cand_list )
+
+    return cand_list_length
+                
+def cand_get( cand, start_index, length ) :
+    if length < 1 :
+        length = 0
+    cand_list_length = cand_gen( cand, start_index + length )
+    #for r in cand_list :
+        #__cand_print_node( cand, r[0], r[1] )
+    r = []
+    cand_list = cand[0]
+    for i in range( start_index, start_index + length ) :
+        if i < cand_list_length :
+            node = cand_list[i]
+            r.append( __cand_gen_node( cand, node[0], node[1] ) )
+    return r
 
 class Backend():
     def __init__( self ):
-        self.db = []
-        self.db.append( dbhash.open( "data/dict.0", "w" ) )
-        self.db.append( dbhash.open( "data/dict.1", "w" ) )
-        self.db.append( dbhash.open( "data/dict.2", "w" ) )
-
-        self.cache = ( ( {}, set() ), ( {}, set() ) )
-        self.code_set = ( set( self.db[0].keys() ), set( self.db[1].keys() ) )
-        self.code_map_entry = loads( self.db[2]["0"] )
-
-        preload_code_set = loads( self.db[2]["1"] )
-        for code in preload_code_set :
-            self.cache[0][0][code] = loads( self.db[0][code] )
+        dict_file = open( "data/dict.0", "r" )
+        byte_stream = dict_file.read()
+        dict_file.close()
+        self.code_map_entry = loads( byte_stream )
+        self.cand = [ [], [], [] ]
 
     def adjust( self, code, flag, index ):
         #print "code = ", code
@@ -168,24 +252,22 @@ class Backend():
             pass
     
     def query( self, code ):
-        def __query( flag, code ):
-            item = []
-            if code in self.code_set[flag]:
-                if self.cache[flag][0].has_key( code ):
-                    item = self.cache[flag][0][code]
-                else:
-                    item = loads( self.db[flag][code] )
-                    self.cache[flag][0][code] = item
-            return item
+        result = code_map_query( self.code_map_entry, code )
+        self.cand[0] = []
+        self.cand[1] = []
+        self.cand[2] = []
+        for node in result :
+            code = node[0]
+            for pinyin_node in node[1] :
+                pinyin = pinyin_node[0]
+                node_list = pinyin_node[1]
+                self.cand[1].append( [ code, pinyin, node_list ] )
+                self.cand[2].append( 0 )
+        #return result
 
-        result = [ __query( 0, code ), __query( 1, code ) ]
 
-        if len( result[0] ) <= 0 and len( result[1] ) <= 0 :
-            code = code_map_check( self.code_map_entry, code )
-            if len( code ) > 0 :
-                result = [ __query( 0, code ), __query( 1, code ) ]
-
-        return result
+    def get_cand( self, start_index, length ) :
+        return cand_get( self.cand, start_index, length )
 
     def close( self ):
         remove_phrase = []
@@ -258,16 +340,19 @@ if __name__ == "__main__" :
         code = sys.stdin.readline()[:-1]
         time_stamp = time.time()
         result = backend.query( code )
-        time_stamp = time.time() - time_stamp
-        if len( result[0] ) > 0 :
-            print "result count", len( result[0][1] )
-            for node in result[0][1] :
-                print node[0], node[1]
+        query_cast = time.time() - time_stamp
+        for node in backend.cand[1] :
+            code = node[0]
+            pinyin = node[1]
+            node_list = node[2]
+            for node in node_list :
+                #print code, pinyin, node[0], node[1]
                 pass
-        if len( result[1] ) > 0 :
-            print "result count", len( result[1][1] )
-            for node in result[1][1] :
-                print node[0], node[1]
-                pass
-        print "query cast", time_stamp, "second"
 
+        time_stamp = time.time()
+        result = backend.get_cand( 0, 6 )
+        gen_cand_cast = time.time() - time_stamp
+        for r in result :
+            print r[0], r[1]
+        print "query cast", query_cast, "second"
+        print "gen cand cast", gen_cand_cast, "second"

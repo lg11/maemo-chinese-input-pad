@@ -67,24 +67,30 @@ def code_map_find( code_map_entry, code ) :
         else :
             print "unknown error"
 
-def check( db ) :
-    time_stamp = time.time()
-    code_map_entry = loads( db["0"] )
-    print "loads cast", time.time() - time_stamp, "s"
+def check( code_map_entry ) :
     while( 1 ) :
         code = sys.stdin.readline()[:-1]
         flag = -1
         time_stamp = time.time()
         result = code_map_find( code_map_entry, code )
         print "query cast", time.time() - time_stamp, "s"
-        print result
+        print result[1][0][0][0], result[1][0][0][1][0][0]
 
-def open_db() :
+def open_dict_file() :
     time_stamp = time.time()
-    db = dbhash.open("dict.0", "w")
+    dict_file = open( "dict.0", "r" )
     print "opend cast", time.time() - time_stamp, "s"
-    return db
+    
+    time_stamp = time.time()
+    byte_stream = dict_file.read()
+    print "read cast", time.time() - time_stamp, "s"
+    
+    time_stamp = time.time()
+    code_map_entry = loads( byte_stream )
+    print "loads cast", time.time() - time_stamp, "s"
+
+    return code_map_entry
 
 if __name__ == "__main__" :
-    db = open_db()
-    check( db )
+    code_map_entry = open_dict_file()
+    check( code_map_entry )

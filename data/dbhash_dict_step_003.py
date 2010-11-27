@@ -34,22 +34,11 @@ def create_code_map( result ) :
                 node = new_node
             else:
                 node = node[2][index]
-        node[1].append( r[1] )
+        node[1].extend( r[1] )
         count[0] = count[0] + 1
         print "mapping", code, count[0], "/", count[1]
 
     return code_map_entry
-
-def commit( db, code_map_entry ) :
-    #print code_map_entry
-    time_stamp = time.time()
-    byte_stream = dumps( code_map_entry )
-    print "dumps cast", time.time() - time_stamp, "s"
-    print "code map len =", len( byte_stream )
-    time_stamp = time.time()
-    code_map = loads( byte_stream )
-    print "loads cast", time.time() - time_stamp, "s"
-    db["0"] = byte_stream
 
 def phrase( cur ) :
     result = []
@@ -86,13 +75,26 @@ def phrase( cur ) :
 
     return result
 
-def create_db() :
-    db = dbhash.open( "dict.0", "c" )
-    return db
-
-def close_db( db ) :
+def commit( dict_file, code_map_entry ) :
+    #print code_map_entry
     time_stamp = time.time()
-    db.close()
+    byte_stream = dumps( code_map_entry )
+    print "dumps cast", time.time() - time_stamp, "s"
+    print "code map len =", len( byte_stream )
+    time_stamp = time.time()
+    code_map = loads( byte_stream )
+    print "loads cast", time.time() - time_stamp, "s"
+    time_stamp = time.time()
+    dict_file.write( byte_stream )
+    print "write cast", time.time() - time_stamp, "s"
+
+def open_dict_file() :
+    dict_file = open( "dict.0", "w" )
+    return dict_file
+
+def close_dict_file( dict_file ) :
+    time_stamp = time.time()
+    dict_file.close()
     print "close cast", time.time() - time_stamp, "s"
 
 def phrase_raw_dict() :
@@ -103,9 +105,9 @@ def phrase_raw_dict() :
 
     code_map_entry = create_code_map( result )
 
-    db = create_db()
-    commit( db, code_map_entry )
-    close_db( db )
+    dict_file = open_dict_file()
+    commit( dict_file, code_map_entry )
+    close_dict_file( dict_file )
 
 if __name__ == "__main__" :
     phrase_raw_dict()
