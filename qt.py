@@ -1,9 +1,9 @@
 #-!- coding=utf-8 -!-
 import sys
 
-from PySide import QtGui, QtCore
-#from PyQt4 import QtGui, QtCore
-#QtCore.Signal = QtCore.pyqtSignal
+#from PySide import QtGui, QtCore
+from PyQt4 import QtGui, QtCore
+QtCore.Signal = QtCore.pyqtSignal
 
 class NumArea():
     def __init__( self ):

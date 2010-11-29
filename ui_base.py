@@ -1,67 +1,59 @@
 #-!- coding=utf-8 -!-
 
-import gtk
-import gobject
-import pango
-import backend
-#import hildon
+#from PySide import QtCore, QtGui
+from PyQt4 import QtCore, QtGui
+QtCore.Signal = QtCore.pyqtSignal
+QtCore.Slot = QtCore.pyqtSlot
 
-class LongPressButton( gtk.Button ):
-    __gsignals__ = { 'longpressed': (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE, ()), }
+class LongPressButton( QtGui.QPushButton ):
+    longpressed = QtCore.Signal()
     DEFAULT_TIMEOUT_VALVE = 350
-    def __init__(self):
-        gtk.Button.__init__(self)
-        #self.set_name("hildon-accept-button-finger")
+    def __init__( self, parent = None ):
+        QtGui.QPushButton.__init__( self, parent )
         self.timeout_valve = self.DEFAULT_TIMEOUT_VALVE
-        self.longpressed_stamp = 0
-        self.longpressed_flag = False
-        self.connect( "pressed", self.cb_pressed )
-        self.connect( "released", self.cb_released )
-        #gobject.signal_new( "longpressed", LongPressButton, gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, () )
-    def timeout( self, longpressed_stamp ):
-        if self.longpressed_stamp == longpressed_stamp :
-            self.longpressed_flag = True
-            self.emit( "longpressed" )
-    def cb_released( self, widget ):
-        self.longpressed_flag = False
-        self.longpressed_stamp = self.longpressed_stamp + 1
-        if self.longpressed_stamp > 65535:
-            self.longpressed_stamp = 0
-    def cb_pressed( self, widget ):
-        self.longpressed_stamp = self.longpressed_stamp + 1
-        if self.longpressed_stamp > 65535:
-            self.longpressed_stamp = 0
-        gobject.timeout_add( self.timeout_valve, self.timeout, self.longpressed_stamp )
+        self.longpress_flag = False
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect( self.timeout )
+        self.pressed.connect( self.slot_press )
+        self.released.connect( self.slot_release )
+        #self.clicked.connect( self.slot_click )
+    @QtCore.Slot()
+    def timeout( self ):
+        self.longpress_flag = True
+        self.timer.stop()
+        self.longpressed.emit()
+        #print "longpress"
+    @QtCore.Slot()
+    def slot_press( self ):
+        self.longpress_flag = False
+        #self.timer.stop()
+        self.timer.start( self.timeout_valve )
+        #print "press"
+    @QtCore.Slot()
+    def slot_release( self ):
+        self.timer.stop()
+        #if self.hitButton( self.mapFromGlobal( self.cursor().pos() ) ) == False and self.longpress_flag == False :
+            #self.clicked.emit()
+        #print "release"
+    #@QtCore.Slot()
+    #def slot_click( self ):
+        #print "click"
+
+class NumPadKey( LongPressButton ):
+    key_clicked = QtCore.Signal(int)
+    key_longpressed = QtCore.Signal(int)
+    def __init__( self, parent, code ):
+        LongPressButton.__init__( self, parent )
+        self.code = code
+        self.clicked.connect( self.slot_click )
+        self.longpressed.connect( self.slot_longpress )
+    @QtCore.Slot()
+    def slot_click( self ):
+        #print "click"
+        if self.longpress_flag == False :
+            self.key_clicked.emit( self.code )
+    @QtCore.Slot()
+    def slot_longpress( self ):
+        #print "longpress"
+        self.key_longpressed.emit( self.code )
     
-
-class LabelButton( LongPressButton ):
-    def __init__( self, label, index = -1 ):
-        LongPressButton.__init__(self)
-        self.label = gtk.Label()
-        self.label.get_layout().set_wrap(pango.WRAP_CHAR)
-        #print self.label.get_layout().get_wrap()
-        self.label.set_line_wrap(True)
-        self.label.set_width_chars(10)
-        self.label.set_text(label)
-        self.label.show()
-        self.add(self.label)
-
-        self.index = index
-        self.enable_flag = True
-    def recover(self):
-        #print "recover"
-        self.enable_flag = True
-    def set_disable( self, timeout = 350 ):
-        self.enable_flag = False
-        gobject.timeout_add( timeout, self.recover  )
-
-class CandWin(gtk.Window):
-    def __init__( self, text_view ):
-        gtk.Window.__init__( self, gtk.WINDOW_POPUP )
-        self.text_view = text_view
-        width = text_view.get_size_request()[0]
-        height = text_view.get_size_request()[1] / 3
-        self.set_size_request( width, height )
-        self.set_decorated( False )
-    def update( self ):
-        pass
