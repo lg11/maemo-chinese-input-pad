@@ -110,14 +110,14 @@ class InputPad( QtGui.QWidget ) :
                 #print item
                 self.key_list[index].setText( item[2] )
                 index = index + 1
-            text = self.interface.selected[2] + self.interface.code
+            text = self.interface.selected() + self.interface.code()
             self.key_list[self.BACKSPACE_KEYCODE].setText( text )
         elif self.mode == self.MODE_SELECT :
             index = 1
             for item in self.interface.cand_list :
                 self.key_list[index].setText( item[2] )
                 index = index + 1
-            text = self.interface.selected[2] + self.interface.code
+            text = self.interface.selected() + self.interface.code()
             self.key_list[self.BACKSPACE_KEYCODE].setText( text )
         elif self.mode == self.MODE_PUNC :
             index = 2
@@ -151,8 +151,8 @@ class InputPad( QtGui.QWidget ) :
                 #for node in self.interface.cand_list :
                     #print node[0], node[1]
             elif code == self.BACKSPACE_KEYCODE :
-                if len( self.interface.code ) > 0 or len( self.interface.selected[0] ) > 0 :
-                    self.interface.pop()
+                c = self.interface.pop()
+                if len( c ) > 0 or len( self.interface.selected() ) > 0 :
                     self.interface.gen_cand()
                     self.update()
                 else :
@@ -161,11 +161,11 @@ class InputPad( QtGui.QWidget ) :
                     pass
             #elif code == 1 or code == self.UNDEFINE_KEYCODE :
             elif code == 1 :
-                if len( self.interface.code ) > 0 :
+                if len( self.interface.code() ) > 0 :
                     self.set_mode( self.MODE_SELECT )
                     self.update()
-                elif len( self.interface.selected[0] ) > 0 :
-                    text = self.interface.selected[2]
+                elif len( self.interface.selected() ) > 0 :
+                    text = self.interface.selected()
                     self.interface.commit()
                     self.textedit.insertPlainText( text )
                     self.update()
@@ -175,11 +175,13 @@ class InputPad( QtGui.QWidget ) :
         elif self.mode == self.MODE_SELECT :
             if code >= 1 and code <= 6 :
                 self.interface.select( code - 1 )
-                if len( self.interface.code ) <= 0 :
+                if len( self.interface.cand_list ) <= 0 :
                     self.set_mode( self.MODE_NORMAL )
                 self.update()
             elif code == self.BACKSPACE_KEYCODE :
-                self.set_mode( self.MODE_NORMAL )
+                c = self.interface.deselect()
+                if c == "" :
+                    self.set_mode( self.MODE_NORMAL )
                 self.update()
             elif code == 7 :
                 self.interface.page_prev()

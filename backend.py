@@ -3,6 +3,39 @@
 from querycache import QueryCache
 from codemap import CodeMap
 
+class SelectedStack() :
+    def __init__( self ) :
+        self.code_stack = []
+        self.cache_stack = []
+        self.cand_index_stack = []
+    def push( self, code, cache, cand_index ) :
+        self.code_stack.append( code )
+        self.cache_stack.append( cache )
+        self.cand_index_stack.append( cand_index )
+    def pop( self ) :
+        code = ""
+        if len( self.code_stack ) > 0 :
+            code = self.code_stack.pop()
+            self.cache_stack.pop()
+            self.cand_index_stack.pop()
+        return code
+    def get( self ) :
+        code = ""
+        pinyin = ""
+        hanzi = ""
+        for index in range( len( self.cache_stack ) ) :
+            cache = self.cache_stack[index]
+            cand_index = self.cand_index_stack[index]
+            c, py, hz, freq = cache.get_prop( cand_index )
+            code = code + c
+            pinyin = pinyin + py
+            hanzi = hanzi + hz
+        return code, pinyin, hanzi
+    def clear( self ) :
+        self.code_stack = []
+        self.cache_stack = []
+        self.cand_index_stack = []
+
 def __load_code_map( file_path ) :
     """
     load code map from a file
@@ -29,11 +62,8 @@ class Backend() :
         self.cand = [ -1, 0, [] ]
         self.cache = []
         self.filter = ""
-    def reset( self ) :
-        self.code = ""
-        self.cand = [ -1, 0, [] ]
-        self.cache = []
-        self.filter = ""
+        self.selected = SelectedStack()
+    #def reset( self ) :
     def append( self, code ) :
         """
         append a code
@@ -52,10 +82,30 @@ class Backend() :
         pop a code
         will pop cache from cache_stack
         """
+        code = ""
         if len( self.code ) > 0 :
+            code = self.code[-1]
             self.code = self.code[:-1]
             self.cache.pop()
             self.cand = [ len( self.cache ) - 1, 0, [] ]
+        return code
+    def __clear_code( self ):
+        self.code = ""
+        self.cand = [ -1, 0, [] ]
+        self.cache = []
+        self.filter = ""
+    def set_code( self, code ) :
+        """
+        set code
+        """
+        self.__clear_code()
+        for c in code :
+            if not self.append( c ) :
+                break
+        #return code[ len( self.code ) : ]
+        return self.code
+    def commit( self ) :
+        self.selected.clear()
     def get_prop( self, cand_index ) :
         """
         get node prot by self cand_list index
@@ -65,7 +115,6 @@ class Backend() :
         cache_cand_index = self.cand[2][cand_index][1]
         cache = self.cache[cache_index]
         return cache.get_prop( cache_cand_index )
-
     def __gen_cand_list( self, request_length ) :
         """
         gen cand_list, include current query_cache
@@ -118,19 +167,29 @@ class Backend() :
             end_pos = cand_list_length
         if start_index > cand_list_length :
             start_index = cand_list_length
-        #result = []
-        #print self.cand[2], start_index, end_pos
-        #result.extend( self.cand[2][ start_index : end_pos ] )
         result = range( start_index, end_pos )
         return result
-    def select( self, cand_index ):
+    def get_selected( self ) :
+        code, pinyin, hanzi = self.selected.get()
+        return hanzi
+    def deselect( self ) :
+        code = self.selected.pop()
+        if len( code ) > 0 :
+            self.__clear_code()
+        return code
+    def select( self, cand_index ) :
+        remained_code = ""
         cache_index = self.cand[2][cand_index][0]
         cache_cand_index = self.cand[2][cand_index][1]
         cache = self.cache[cache_index]
         code, hanzi, pinyin, freq = cache.get_prop( cache_cand_index )
-        print code, hanzi, pinyin, freq
-        code, hanzi, pinyin, freq = cache.get_prop( cache_cand_index / 2 )
-        print code, hanzi, pinyin, freq
+        if len( self.code ) < len( code ) :
+            self.selected.push( self.code, cache, cache_cand_index )
+        else :
+            remained_code = self.code[ len( code ) : ]
+            self.selected.push( code, cache, cache_cand_index )
+        self.__clear_code()
+        return remained_code
     def t() :
         if index < len( cand_list ) :
             node = cand_list[index]
