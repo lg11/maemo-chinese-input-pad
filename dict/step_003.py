@@ -5,40 +5,30 @@ from marshal import dumps, loads
 import dbhash
 import time
 
-def node_find( node, code ) :
-    index = 0
-    flag = False
-    while ( not flag ) and index < len( node[2] ) :
-        sub_node = node[2][index]
-        if sub_node[0] == code :
-            flag = True
-        else :
-            index = index + 1
-    if flag :
-        return index
-    else :
-        return -1
+import sys
+sys.path.append( '../' )
+
+from codemap import CodeMap, get_data, set_data
 
 def create_code_map( result ) :
-    code_map_entry = [ "0", [], [] ]
+
+    code_map = CodeMap()
     
     count = [ 0, len( result ) ]
     for r in result :
         code = r[0]
-        node = code_map_entry
-        for c in code :
-            index = node_find( node, c )
-            if index < 0 :
-                new_node = [ c, [], [] ]
-                node[2].append( new_node )
-                node = new_node
-            else:
-                node = node[2][index]
-        node[1].extend( r[1] )
+        node = code_map.add_path( code )
+        l = get_data( node )
+        if l :
+            l.extend( r[1] )
+        else :
+            l = []
+            l.extend( r[1] )
+            set_data( node, l )
         count[0] = count[0] + 1
         print "mapping", code, count[0], "/", count[1]
 
-    return code_map_entry
+    return code_map
 
 def phrase( cur ) :
     result = []
@@ -48,6 +38,9 @@ def phrase( cur ) :
 
     count = [ 0, len( code_set ) ]
     for code in code_set :
+    #code_list = list( code_set )
+    #for i in range( len( code_list ) / 20 ) :
+        #code = code_list[i]
         rs = cur.execute( sql_sentence, code )
         code = code[0].encode( "utf-8" )
         
@@ -98,15 +91,16 @@ def close_dict_file( dict_file ) :
     print "close cast", time.time() - time_stamp, "s"
 
 def phrase_raw_dict() :
-    conn = sqlite3.connect( "temp_buffer_003" )
+    conn = sqlite3.connect( "cache/db" )
     cur = conn.cursor()
     result = phrase( cur )
     conn.close()
 
-    code_map_entry = create_code_map( result )
+    code_map = create_code_map( result )
+    #print code_map.entry
 
     dict_file = open_dict_file()
-    commit( dict_file, code_map_entry )
+    commit( dict_file, code_map.entry )
     close_dict_file( dict_file )
 
 if __name__ == "__main__" :

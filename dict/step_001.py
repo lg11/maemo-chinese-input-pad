@@ -8,11 +8,14 @@ def phrase_raw() :
 
     trans = string.maketrans( chars, nums )
 
-    file_raw = open( "temp_buffer_001", "r" )
-    file_zi = open( "temp_buffer_002", "w" )
-    file_ci = open( "temp_buffer_003", "w" )
+    file_raw = open( "cache/utf8raw", "r" )
+    file_out = open( "cache/sqlite", "w" )
 
-    for line in file_raw.readlines() :
+    lines = file_raw.readlines()
+    count = [ 0, len( lines ) ]
+    for line in lines :
+        count[0] = count[0] + 1
+
         line = line[:-1]
         line = line.split()
 
@@ -23,18 +26,14 @@ def phrase_raw() :
         
         length = len( hanzi.decode( "utf-8" ) )
         if length <= 5 :
-            print "insert", hanzi
+            print "insert", hanzi, count[0], "/", count[1]
             strings = [ code, pinyin, hanzi, freq ]
-            if length > 1 :
-                file_ci.write( "|".join( strings ) + "\n" )
-            else :
-                file_zi.write( "|".join( strings ) + "\n" )
+            file_out.write( "|".join( strings ) + "\n" )
         else :
-            print "drop", hanzi
+            print "drop", hanzi, count[0], "/", count[1]
 
     file_raw.close()
-    file_zi.close()
-    file_ci.close()
+    file_out.close()
 
 if __name__ == "__main__" :
     phrase_raw()

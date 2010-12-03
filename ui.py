@@ -54,6 +54,17 @@ class InputPad( QtGui.QWidget ) :
     MODE_SELECT = 1
     MODE_PUNC = 2
 
+    PUNC_MAP = [ \
+            [ " ", "\n", "，", "。", "？", "……", "～", "！", ] \
+            , \
+            [ "、", "；", "：", "“", "”", "——", "（", "）", ] \
+            , \
+            [ "@", "&", "_", "《", "》", "%", "‘", "’", ] \
+            , \
+            [ "*", "#", "\\", "+", "-", "=", "*", "/", ] \
+            , \
+            ]
+
     FONT_NORMAL = QtGui.QFont()
     FONT_UNDERLINR = QtGui.QFont()
     FONT_UNDERLINR.setUnderline( True )
@@ -67,17 +78,20 @@ class InputPad( QtGui.QWidget ) :
         self.setLayout( self.layout )
 
         self.textedit = QtGui.QTextEdit( self )
+        #self.textedit.setReadOnly( True )
+        #self.textedit.grabKeyboard()
         self.layout.addWidget( self.textedit )
         
         self.keypad_layout = QtGui.QGridLayout()
         self.keypad_layout.setSpacing( self.LAYOUT_SPACING )
-        self.keypad_layout.setContentsMargins( 0, 0, 0, 15 )
+        self.keypad_layout.setContentsMargins( 0, 0, 0, 0 )
         self.layout.addLayout( self.keypad_layout )
 
         self.key_list = []
         for keycode in range( len( self.KEY_MAP ) ) :
             key_map = self.KEY_MAP[keycode]
             key = NumPadKey( self, keycode )
+            key.setFocusProxy( self.textedit )
             key.setText( key_map[0] )
             key.setFixedHeight( self.KEY_HEIGHT * key_map[2] )
             self.keypad_layout.addWidget( key, key_map[1][0], key_map[1][1] ,key_map[1][2] ,key_map[1][3] )
@@ -87,6 +101,7 @@ class InputPad( QtGui.QWidget ) :
 
         self.interface = Interface()
         self.mode = self.MODE_NORMAL
+        self.punc_index = 0
 
     def update( self ) :
         if self.mode == self.MODE_NORMAL :
@@ -104,23 +119,28 @@ class InputPad( QtGui.QWidget ) :
                 index = index + 1
             text = self.interface.selected[2] + self.interface.code
             self.key_list[self.BACKSPACE_KEYCODE].setText( text )
+        elif self.mode == self.MODE_PUNC :
+            index = 2
+            punc_list = self.PUNC_MAP[self.punc_index]
+            for punc in punc_list :
+                self.key_list[index].setText( punc.decode( "utf-8" ) )
+                index = index + 1
+
             
     def set_mode( self, mode ) :
-        if mode < 0 or mode > 5 :
-            pass
-        else :
-            self.mode = mode
+        self.mode = mode
 
-            if mode == self.MODE_NORMAL :
-                self.page_index = 0
-                for i in range( 1, 7 ) :
-                    self.key_list[i].setFont( self. FONT_NORMAL )
-            elif mode == self.MODE_SELECT :
-                self.page_index = 0
-                for i in range( 1, 7 ) :
-                    self.key_list[i].setFont( self. FONT_UNDERLINR )
+        if mode == self.MODE_NORMAL :
+            for i in range( 1, 7 ) :
+                self.key_list[i].setFont( self. FONT_NORMAL )
+        elif mode == self.MODE_SELECT :
+            for i in range( 1, 7 ) :
+                self.key_list[i].setFont( self. FONT_UNDERLINR )
+        elif mode == self.MODE_PUNC :
+            self.punc_index = 0
+            for i in range( 1, 7 ) :
+                self.key_list[i].setFont( self. FONT_NORMAL )
             
-
     @QtCore.Slot( int )
     def slot_key_click( self, code ):
         if self.mode == self.MODE_NORMAL :
@@ -128,15 +148,30 @@ class InputPad( QtGui.QWidget ) :
                 self.interface.append( str( code ) )
                 self.interface.gen_cand()
                 self.update()
-            elif code == self.BACKSPACE_KEYCODE :
-                self.interface.backspace()
-                self.interface.gen_cand()
-                self.update()
                 #for node in self.interface.cand_list :
                     #print node[0], node[1]
+            elif code == self.BACKSPACE_KEYCODE :
+                if len( self.interface.code ) > 0 or len( self.interface.selected[0] ) > 0 :
+                    self.interface.pop()
+                    self.interface.gen_cand()
+                    self.update()
+                else :
+                    cursor = self.textedit.textCursor()
+                    cursor.deletePreviousChar()
+                    pass
+            #elif code == 1 or code == self.UNDEFINE_KEYCODE :
             elif code == 1 :
-                self.set_mode( self.MODE_SELECT )
-                self.update()
+                if len( self.interface.code ) > 0 :
+                    self.set_mode( self.MODE_SELECT )
+                    self.update()
+                elif len( self.interface.selected[0] ) > 0 :
+                    text = self.interface.selected[2]
+                    self.interface.commit()
+                    self.textedit.insertPlainText( text )
+                    self.update()
+                else :
+                    self.set_mode( self.MODE_PUNC )
+                    self.update()
         elif self.mode == self.MODE_SELECT :
             if code >= 1 and code <= 6 :
                 self.interface.select( code - 1 )
@@ -146,10 +181,40 @@ class InputPad( QtGui.QWidget ) :
             elif code == self.BACKSPACE_KEYCODE :
                 self.set_mode( self.MODE_NORMAL )
                 self.update()
+            elif code == 7 :
+                self.interface.page_prev()
+                self.update()
+            elif code == 9 :
+                self.interface.page_next()
+                self.update()
+        elif self.mode == self.MODE_PUNC :
+            if code >= 2 and code <= 9 :
+                index = code - 2
+                punc_list = self.PUNC_MAP[self.punc_index]
+                self.textedit.insertPlainText( punc_list[index].decode( "utf-8" ) )
+                self.set_mode( self.MODE_NORMAL )
+                self.update()
+            elif code == self.BACKSPACE_KEYCODE :
+                self.set_mode( self.MODE_NORMAL )
+                self.update()
+            #elif code == 1 or code == self.UNDEFINE_KEYCODE :
+            elif code == 1 :
+                self.punc_index = self.punc_index + 1
+                if self.punc_index < len( self.PUNC_MAP ) :
+                    pass
+                else :
+                    self.punc_index = 0
+                self.update()
+        #self.textedit.setFocus()
 
     @QtCore.Slot( int )
-    def slot_key_longpress( self, code ):
+    def slot_key_longpress( self, code ) :
+        #self.textedit.setFocus()
         pass
+
+    def closeEvent( self, event ) :
+        self.hide()
+        self.interface.backend.save()
 
 if __name__ == "__main__" :
     app = QtGui.QApplication( sys.argv )
