@@ -49,9 +49,9 @@ class Interface() :
     def deselect( self ) :
         code = self.backend.deselect()
         if len( code ) > 0 :
-            print code, self.invailed_code
+            #print code, self.invailed_code
             code = code + self.invailed_code
-            print code, self.invailed_code
+            #print code, self.invailed_code
             self.set_code( code )
             self.gen_cand()
         return code

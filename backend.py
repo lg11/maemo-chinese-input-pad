@@ -173,7 +173,7 @@ class Backend() :
         code, pinyin, hanzi = self.selected.get()
         return hanzi
     def deselect( self ) :
-        code = self.selected.pop()
+        code = self.selected.pop() + self.code
         if len( code ) > 0 :
             self.__clear_code()
         return code
