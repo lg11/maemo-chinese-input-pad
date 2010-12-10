@@ -8,16 +8,17 @@ QtCore.Slot = QtCore.pyqtSlot
 class LongPressButton( QtGui.QPushButton ):
     longpressed = QtCore.Signal()
     DEFAULT_TIMEOUT_VALVE = 350
+    DEFAULT_AUTO_REPEAT_INTERVAL = 100
     def __init__( self, parent = None ):
         QtGui.QPushButton.__init__( self, parent )
         self.timeout_valve = self.DEFAULT_TIMEOUT_VALVE
+        self.auto_repeat_interval = self.DEFAULT_AUTO_REPEAT_INTERVAL
         self.longpress_flag = False
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect( self.timeout )
         self.pressed.connect( self.slot_press )
         self.released.connect( self.slot_release )
         self.auto_repeat = False
-        self.auto_repeat_flag = False
         #self.clicked.connect( self.slot_click )
     def enableAutoRepeat( self ) :
         self.auto_repeat = True
@@ -25,10 +26,13 @@ class LongPressButton( QtGui.QPushButton ):
         self.auto_repeat = False
     @QtCore.Slot()
     def timeout( self ):
-        self.longpress_flag = True
         self.timer.stop()
-        self.longpressed.emit()
-        #print "longpress"
+        if self.auto_repeat == True :
+            self.clicked.emit( True )
+            self.timer.start( self.auto_repeat_interval )
+        else :
+            self.longpress_flag = True
+            self.longpressed.emit()
     @QtCore.Slot()
     def slot_press( self ):
         self.longpress_flag = False

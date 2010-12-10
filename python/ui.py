@@ -99,6 +99,8 @@ class InputPad( QtGui.QWidget ) :
             key.key_clicked.connect( self.slot_key_click )
             key.key_longpressed.connect( self.slot_key_longpress )
 
+        self.key_list[self.BACKSPACE_KEYCODE].enableAutoRepeat()
+
         self.interface = Interface()
         self.mode = self.MODE_NORMAL
         self.punc_index = 0
