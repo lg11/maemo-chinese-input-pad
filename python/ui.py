@@ -68,7 +68,7 @@ class InputPad( QtGui.QWidget ) :
     FONT_NORMAL = QtGui.QFont()
     FONT_UNDERLINR = QtGui.QFont()
     FONT_UNDERLINR.setUnderline( True )
-    def __init__( self, parent = None ):
+    def __init__( self, parent = None ) :
         QtGui.QWidget.__init__( self, parent )
         #QtGui.QWidget.__init__( self, parent, QtCore.Qt.Dialog | QtCore.Qt.FramelessWindowHint )
         self.setAttribute( QtCore.Qt.WA_Maemo5PortraitOrientation, True )
@@ -144,7 +144,7 @@ class InputPad( QtGui.QWidget ) :
                 self.key_list[i].setFont( self. FONT_NORMAL )
             
     @QtCore.Slot( int )
-    def slot_key_click( self, code ):
+    def slot_key_click( self, code ) :
         if self.mode == self.MODE_NORMAL :
             if code >= 2 and code <= 9 :
                 self.interface.append( str( code ) )
@@ -153,10 +153,12 @@ class InputPad( QtGui.QWidget ) :
                 #for node in self.interface.cand_list :
                     #print node[0], node[1]
             elif code == self.BACKSPACE_KEYCODE :
-                c = self.interface.pop()
-                if len( c ) > 0 or len( self.interface.get_selected() ) > 0 :
+                if len( self.interface.code() ) > 0 :
+                    c = self.interface.pop()
                     self.interface.gen_cand_list()
                     self.update()
+                    if len( self.interface.code() ) <= 0 :
+                        self.key_list[code].disable()
                 else :
                     cursor = self.textedit.textCursor()
                     cursor.deletePreviousChar()

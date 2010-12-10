@@ -5,65 +5,72 @@ from PyQt4 import QtCore, QtGui
 QtCore.Signal = QtCore.pyqtSignal
 QtCore.Slot = QtCore.pyqtSlot
 
-class LongPressButton( QtGui.QPushButton ):
-    longpressed = QtCore.Signal()
-    DEFAULT_TIMEOUT_VALVE = 350
-    DEFAULT_AUTO_REPEAT_INTERVAL = 100
-    def __init__( self, parent = None ):
+class m_key( QtGui.QPushButton ) :
+    m_longpressed = QtCore.Signal()
+    m_clicked = QtCore.Signal()
+    DEFAULT_LONGPRESS_INTERVAL = 350
+    DEFAULT_AUTO_REPEAT_INTERVAL = 90
+    DEFAULT_DISABLE_INTERVAL = 150
+    def __init__( self, parent = None ) :
         QtGui.QPushButton.__init__( self, parent )
-        self.timeout_valve = self.DEFAULT_TIMEOUT_VALVE
-        self.auto_repeat_interval = self.DEFAULT_AUTO_REPEAT_INTERVAL
-        self.longpress_flag = False
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect( self.timeout )
-        self.pressed.connect( self.slot_press )
-        self.released.connect( self.slot_release )
+        self.longpress_interval = self.DEFAULT_LONGPRESS_INTERVAL
+        self.auto_repeat_interval = self.DEFAULT_AUTO_REPEAT_INTERVAL
+        self.disable_interval = self.DEFAULT_DISABLE_INTERVAL
+        self.pressed.connect( self.m_slot_press )
+        self.released.connect( self.m_slot_release )
+        self.clicked.connect( self.m_slot_click )
         self.auto_repeat = False
-        #self.clicked.connect( self.slot_click )
+        self.disable_flag = False
+        self.longpress_flag = False
     def enableAutoRepeat( self ) :
         self.auto_repeat = True
     def disableAutoRepeat( self ) :
         self.auto_repeat = False
-    @QtCore.Slot()
-    def timeout( self ):
+    def disable( self ) :
         self.timer.stop()
-        if self.auto_repeat == True :
-            self.clicked.emit( True )
+        self.longpress_flag = False
+        self.disable_flag = True
+        self.timer.start( self.disable_interval )
+    @QtCore.Slot()
+    def timeout( self ) :
+        self.timer.stop()
+        if self.disable_flag :
+            self.disable_flag = False
+        elif self.auto_repeat == True :
+            self.m_clicked.emit()
             self.timer.start( self.auto_repeat_interval )
         else :
             self.longpress_flag = True
-            self.longpressed.emit()
+            self.m_longpressed.emit()
     @QtCore.Slot()
-    def slot_press( self ):
-        self.longpress_flag = False
-        #self.timer.stop()
-        self.timer.start( self.timeout_valve )
-        #print "press"
+    def m_slot_press( self ) :
+        if not self.disable_flag :
+            self.longpress_flag = False
+            self.timer.stop()
+            self.timer.start( self.longpress_interval )
     @QtCore.Slot()
-    def slot_release( self ):
-        self.timer.stop()
-        #if self.hitButton( self.mapFromGlobal( self.cursor().pos() ) ) == False and self.longpress_flag == False :
-            #self.clicked.emit()
-        #print "release"
-    #@QtCore.Slot()
-    #def slot_click( self ):
-        #print "click"
+    def m_slot_release( self ) :
+        if not self.disable_flag :
+            self.timer.stop()
+    @QtCore.Slot()
+    def m_slot_click( self ) :
+        if not self.longpress_flag and not self.disable_flag :
+            self.m_clicked.emit()
 
-class NumPadKey( LongPressButton ):
+class NumPadKey( m_key ) :
     key_clicked = QtCore.Signal(int)
     key_longpressed = QtCore.Signal(int)
-    def __init__( self, parent, code ):
-        LongPressButton.__init__( self, parent )
+    def __init__( self, parent, code ) :
+        m_key.__init__( self, parent )
         self.code = code
-        self.clicked.connect( self.slot_click )
-        self.longpressed.connect( self.slot_longpress )
+        self.m_clicked.connect( self.slot_click )
+        self.m_longpressed.connect( self.slot_longpress )
     @QtCore.Slot()
-    def slot_click( self ):
-        #print "click"
-        if self.longpress_flag == False :
-            self.key_clicked.emit( self.code )
+    def slot_click( self ) :
+        self.key_clicked.emit( self.code )
     @QtCore.Slot()
-    def slot_longpress( self ):
-        #print "longpress"
+    def slot_longpress( self ) :
         self.key_longpressed.emit( self.code )
     

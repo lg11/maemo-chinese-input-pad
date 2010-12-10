@@ -88,7 +88,7 @@ class Backend() :
             self.cache.pop()
             self.cand = [ len( self.cache ) - 1, 0, [] ]
         return code
-    def __clear_code( self ):
+    def __clear_code( self ) :
         self.code = ""
         self.cand = [ -1, 0, [] ]
         self.cache = []
@@ -128,7 +128,7 @@ class Backend() :
                     #gen cand list without filter
                     cache_index = self.cand[0]
                     flag = False
-                    while cache_index >= 0 and ( not flag ):
+                    while cache_index >= 0 and ( not flag ) :
                         cache_cand_list_length = self.cand[1]
                         cache = self.cache[cache_index]
                         cache_request_length = cache_cand_list_length + request_length - cand_list_length #compute how many cand need gen

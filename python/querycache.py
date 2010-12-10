@@ -7,7 +7,7 @@ class Query() :
     phrase code_map data
     to a easy use interface
     """
-    def __init__( self, code_map, code ):
+    def __init__( self, code_map, code ) :
         """
         init with a seek
         """
@@ -88,12 +88,12 @@ class Query() :
             else :
                 flag = False
         return cand_length
-    def vaild( self ):
+    def vaild( self ) :
         """
         return is the cache vaild
         """
         return self.vaild_flag
-    def completed( self ):
+    def completed( self ) :
         """
         return is the cache has a completed path
         """
@@ -142,7 +142,7 @@ class QueryCache() :
             self.cand = []
             self.filter = ""
         return code
-    def __clear( self ):
+    def __clear( self ) :
         self.code = ""
         self.cache = []
         self.cache_index = -1
@@ -182,7 +182,7 @@ class QueryCache() :
                     #gen cand list without filter
                     cache_index = self.cache_index
                     flag = False
-                    while cache_index >= 0 and ( not flag ):
+                    while cache_index >= 0 and ( not flag ) :
                         cache_cand_index = self.cache_cand_index
                         cache = self.cache[cache_index]
                         cache_request_length = cache_cand_index + request_length - cand_length #compute how many cand need gen
