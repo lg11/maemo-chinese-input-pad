@@ -12,7 +12,7 @@ from dbus.mainloop.glib import DBusGMainLoop
 import sys
 import time
 
-from ui_base import NumPadKey
+from widget import NumPadKey
 from interface import Interface
 
 
@@ -42,7 +42,7 @@ class InputPad( QtGui.QWidget ) :
             , \
             [ "mode", [ 4, 2, 1, 1 ], 0.9, ] \
             , \
-            [ "backspace", [ 0, 0, 1, 3 ], 0.75, ] \
+            [ "backspace", [ 0, 0, 1, 3 ], 0.85, ] \
             , \
             ]
     UNDEFINE_KEYCODE = 10
@@ -110,14 +110,14 @@ class InputPad( QtGui.QWidget ) :
                 #print item
                 self.key_list[index].setText( item[2] )
                 index = index + 1
-            text = self.interface.selected() + self.interface.code()
+            text = self.interface.get_selected() + self.interface.code()
             self.key_list[self.BACKSPACE_KEYCODE].setText( text )
         elif self.mode == self.MODE_SELECT :
             index = 1
             for item in self.interface.cand_list :
                 self.key_list[index].setText( item[2] )
                 index = index + 1
-            text = self.interface.selected() + self.interface.code()
+            text = self.interface.get_selected() + self.interface.code()
             self.key_list[self.BACKSPACE_KEYCODE].setText( text )
         elif self.mode == self.MODE_PUNC :
             index = 2
@@ -146,14 +146,14 @@ class InputPad( QtGui.QWidget ) :
         if self.mode == self.MODE_NORMAL :
             if code >= 2 and code <= 9 :
                 self.interface.append( str( code ) )
-                self.interface.gen_cand()
+                self.interface.gen_cand_list()
                 self.update()
                 #for node in self.interface.cand_list :
                     #print node[0], node[1]
             elif code == self.BACKSPACE_KEYCODE :
                 c = self.interface.pop()
-                if len( c ) > 0 or len( self.interface.selected() ) > 0 :
-                    self.interface.gen_cand()
+                if len( c ) > 0 or len( self.interface.get_selected() ) > 0 :
+                    self.interface.gen_cand_list()
                     self.update()
                 else :
                     cursor = self.textedit.textCursor()
@@ -164,30 +164,32 @@ class InputPad( QtGui.QWidget ) :
                 if len( self.interface.code() ) > 0 :
                     self.set_mode( self.MODE_SELECT )
                     self.update()
-                elif len( self.interface.selected() ) > 0 :
-                    text = self.interface.selected()
-                    self.interface.commit()
-                    self.textedit.insertPlainText( text )
-                    self.update()
                 else :
                     self.set_mode( self.MODE_PUNC )
                     self.update()
         elif self.mode == self.MODE_SELECT :
             if code >= 1 and code <= 6 :
                 self.interface.select( code - 1 )
-                if len( self.interface.cand_list ) <= 0 :
+                self.interface.gen_cand_list()
+                if len( self.interface.code() ) <= 0 :
+                    text = self.interface.get_selected()
+                    self.interface.commit()
+                    self.textedit.insertPlainText( text )
                     self.set_mode( self.MODE_NORMAL )
                 self.update()
             elif code == self.BACKSPACE_KEYCODE :
                 c = self.interface.deselect()
+                self.interface.gen_cand_list()
                 if c == "" :
                     self.set_mode( self.MODE_NORMAL )
                 self.update()
             elif code == 7 :
                 self.interface.page_prev()
+                self.interface.gen_cand_list()
                 self.update()
             elif code == 9 :
                 self.interface.page_next()
+                self.interface.gen_cand_list()
                 self.update()
         elif self.mode == self.MODE_PUNC :
             if code >= 2 and code <= 9 :
@@ -216,7 +218,7 @@ class InputPad( QtGui.QWidget ) :
 
     def closeEvent( self, event ) :
         self.hide()
-        self.interface.backend.save()
+        #self.interface.backend.save()
 
 if __name__ == "__main__" :
     app = QtGui.QApplication( sys.argv )

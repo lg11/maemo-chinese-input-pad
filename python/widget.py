@@ -16,7 +16,13 @@ class LongPressButton( QtGui.QPushButton ):
         self.timer.timeout.connect( self.timeout )
         self.pressed.connect( self.slot_press )
         self.released.connect( self.slot_release )
+        self.auto_repeat = False
+        self.auto_repeat_flag = False
         #self.clicked.connect( self.slot_click )
+    def enableAutoRepeat( self ) :
+        self.auto_repeat = True
+    def disableAutoRepeat( self ) :
+        self.auto_repeat = False
     @QtCore.Slot()
     def timeout( self ):
         self.longpress_flag = True

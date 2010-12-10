@@ -59,8 +59,7 @@ class Backend() :
         """
         self.code_map = load_code_map( "dict/dict.0" )
         self.code = ""
-        self.cand = [ -1, 0, [] ]
-        self.cache = []
+        self.cache = QueryCache( code_map )
         self.filter = ""
         self.selected = SelectedStack()
     #def reset( self ) :
