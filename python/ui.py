@@ -90,43 +90,54 @@ class InputPad( QtGui.QWidget ) :
         self.key_list = []
         for keycode in range( len( self.KEY_MAP ) ) :
             key_map = self.KEY_MAP[keycode]
-            key = NumPadKey( self, keycode )
+            key = NumPadKey( keycode, self )
             key.setFocusProxy( self.textedit )
             key.setText( key_map[0] )
             key.setFixedHeight( self.KEY_HEIGHT * key_map[2] )
             self.keypad_layout.addWidget( key, key_map[1][0], key_map[1][1] ,key_map[1][2] ,key_map[1][3] )
             self.key_list.append( key )
-            key.key_clicked.connect( self.slot_key_click )
-            key.key_longpressed.connect( self.slot_key_longpress )
+            key.clicked.connect( self.slot_key_click )
+            key.longpressed.connect( self.slot_key_longpress )
 
-        self.key_list[self.BACKSPACE_KEYCODE].enableAutoRepeat()
+        #self.key_list[self.BACKSPACE_KEYCODE].enableAutoRepeat()
 
         self.interface = Interface()
         self.mode = self.MODE_NORMAL
         self.punc_index = 0
 
     def update( self ) :
+        update_stamp = []
+        for i in range( len( self.KEY_MAP ) ) :
+            update_stamp.append( False )
         if self.mode == self.MODE_NORMAL :
             index = 1
             for item in self.interface.cand_list :
                 #print item
                 self.key_list[index].setText( item[2] )
+                update_stamp[index] = True
                 index = index + 1
             text = self.interface.get_selected() + self.interface.code()
             self.key_list[self.BACKSPACE_KEYCODE].setText( text )
+            update_stamp[self.BACKSPACE_KEYCODE] = True
         elif self.mode == self.MODE_SELECT :
             index = 1
             for item in self.interface.cand_list :
                 self.key_list[index].setText( item[2] )
+                update_stamp[index] = True
                 index = index + 1
             text = self.interface.get_selected() + self.interface.code()
             self.key_list[self.BACKSPACE_KEYCODE].setText( text )
+            update_stamp[self.BACKSPACE_KEYCODE] = True
         elif self.mode == self.MODE_PUNC :
             index = 2
             punc_list = self.PUNC_MAP[self.punc_index]
             for punc in punc_list :
                 self.key_list[index].setText( punc.decode( "utf-8" ) )
+                update_stamp[index] = True
                 index = index + 1
+        for i in range( len( self.KEY_MAP ) ) :
+            if not update_stamp[i] :
+                self.key_list[i].setText( self.KEY_MAP[i][0] )
 
             
     def set_mode( self, mode ) :
@@ -158,7 +169,9 @@ class InputPad( QtGui.QWidget ) :
                     self.interface.gen_cand_list()
                     self.update()
                     if len( self.interface.code() ) <= 0 :
-                        self.key_list[code].disable()
+                        #self.key_list[code].pause_auto_repeat()
+                        #self.key_list[code].disable()
+                        pass
                 else :
                     cursor = self.textedit.textCursor()
                     cursor.deletePreviousChar()
@@ -217,7 +230,9 @@ class InputPad( QtGui.QWidget ) :
 
     @QtCore.Slot( int )
     def slot_key_longpress( self, code ) :
-        #self.textedit.setFocus()
+        if self.mode == self.MODE_NORMAL :
+            if code >= 0 and code <= 9 :
+                self.textedit.insertPlainText( str( code ) )
         pass
 
     def closeEvent( self, event ) :
