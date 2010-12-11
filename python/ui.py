@@ -12,7 +12,7 @@ from dbus.mainloop.glib import DBusGMainLoop
 import sys
 import time
 
-from widget import NumPadKey
+from widget import NumPadKey, TextEditKey
 from interface import Interface
 
 
@@ -45,9 +45,9 @@ class InputPad( QtGui.QWidget ) :
             [ "backspace", [ 0, 0, 1, 3 ], 0.85, ] \
             , \
             ]
-    UNDEFINE_KEYCODE = 10
-    MODE_KEYCODE = 11
-    BACKSPACE_KEYCODE = 12
+    KEYCODE_UNDEFINE = 10
+    KEYCODE_MODE = 11
+    KEYCODE_BACKSPACE = 12
     KEY_HEIGHT = 105
     LAYOUT_SPACING = 0
     MODE_NORMAL = 0
@@ -77,7 +77,9 @@ class InputPad( QtGui.QWidget ) :
         self.layout.setSpacing( self.LAYOUT_SPACING )
         self.setLayout( self.layout )
 
-        self.textedit = QtGui.QTextEdit( self )
+        self.textedit = TextEditKey( self.KEYCODE_BACKSPACE, self )
+        self.textedit.clicked.connect( self.slot_key_click )
+        self.textedit.longpressed.connect( self.slot_key_longpress )
         #self.textedit.setReadOnly( True )
         #self.textedit.grabKeyboard()
         self.layout.addWidget( self.textedit )
@@ -99,7 +101,8 @@ class InputPad( QtGui.QWidget ) :
             key.clicked.connect( self.slot_key_click )
             key.longpressed.connect( self.slot_key_longpress )
 
-        #self.key_list[self.BACKSPACE_KEYCODE].enableAutoRepeat()
+        #self.key_list[self.KEYCODE_BACKSPACE].enableAutoRepeat()
+        self.key_list[self.KEYCODE_BACKSPACE].hide()
 
         self.interface = Interface()
         self.mode = self.MODE_NORMAL
@@ -117,8 +120,7 @@ class InputPad( QtGui.QWidget ) :
                 update_stamp[index] = True
                 index = index + 1
             text = self.interface.get_selected() + self.interface.code()
-            self.key_list[self.BACKSPACE_KEYCODE].setText( text )
-            update_stamp[self.BACKSPACE_KEYCODE] = True
+            self.textedit.set_preedit( text )
         elif self.mode == self.MODE_SELECT :
             index = 1
             for item in self.interface.cand_list :
@@ -126,8 +128,8 @@ class InputPad( QtGui.QWidget ) :
                 update_stamp[index] = True
                 index = index + 1
             text = self.interface.get_selected() + self.interface.code()
-            self.key_list[self.BACKSPACE_KEYCODE].setText( text )
-            update_stamp[self.BACKSPACE_KEYCODE] = True
+            self.key_list[self.KEYCODE_BACKSPACE].setText( text )
+            update_stamp[self.KEYCODE_BACKSPACE] = True
         elif self.mode == self.MODE_PUNC :
             index = 2
             punc_list = self.PUNC_MAP[self.punc_index]
@@ -163,7 +165,7 @@ class InputPad( QtGui.QWidget ) :
                 self.update()
                 #for node in self.interface.cand_list :
                     #print node[0], node[1]
-            elif code == self.BACKSPACE_KEYCODE :
+            elif code == self.KEYCODE_BACKSPACE :
                 if len( self.interface.code() ) > 0 :
                     c = self.interface.pop()
                     self.interface.gen_cand_list()
@@ -176,7 +178,7 @@ class InputPad( QtGui.QWidget ) :
                     cursor = self.textedit.textCursor()
                     cursor.deletePreviousChar()
                     pass
-            #elif code == 1 or code == self.UNDEFINE_KEYCODE :
+            #elif code == 1 or code == self.KEYCODE_UNDEFINE :
             elif code == 1 :
                 if len( self.interface.code() ) > 0 :
                     self.set_mode( self.MODE_SELECT )
@@ -194,7 +196,7 @@ class InputPad( QtGui.QWidget ) :
                     self.textedit.insertPlainText( text )
                     self.set_mode( self.MODE_NORMAL )
                 self.update()
-            elif code == self.BACKSPACE_KEYCODE :
+            elif code == self.KEYCODE_BACKSPACE :
                 c = self.interface.deselect()
                 self.interface.gen_cand_list()
                 if c == "" :
@@ -215,10 +217,10 @@ class InputPad( QtGui.QWidget ) :
                 self.textedit.insertPlainText( punc_list[index].decode( "utf-8" ) )
                 self.set_mode( self.MODE_NORMAL )
                 self.update()
-            elif code == self.BACKSPACE_KEYCODE :
+            elif code == self.KEYCODE_BACKSPACE :
                 self.set_mode( self.MODE_NORMAL )
                 self.update()
-            #elif code == 1 or code == self.UNDEFINE_KEYCODE :
+            #elif code == 1 or code == self.KEYCODE_UNDEFINE :
             elif code == 1 :
                 self.punc_index = self.punc_index + 1
                 if self.punc_index < len( self.PUNC_MAP ) :
