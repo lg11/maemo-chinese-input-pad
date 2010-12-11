@@ -48,17 +48,20 @@ class TextEditKey( QtGui.QTextEdit ) :
                 cursor.deletePreviousChar()
         self.preedit_start_pos = -1
         self.preedit_end_pos = -1
+        self.normal_format = QtGui.QTextCharFormat()
+        self.preedit_format = QtGui.QTextCharFormat()
+        self.preedit_format.setFontUnderline( True )
     def __insert_preedit( self, text ) :
         cursor = self.textCursor()
         self.preedit_start_pos = cursor.position()
-        cursor.insertText( text )
+        cursor.insertText( text, self.preedit_format )
         self.preedit_end_pos = cursor.position()
     def set_preedit( self, text ) :
         self.__clear_preedit()
         if len( text ) > 0 :
             self.__insert_preedit( text )
     def mouseDoubleClickEvent( self, event ) :
-        pass
+        self.mousePressEvent( event )
     def mousePressEvent( self, event ) :
         self.timer.start( self.longpress_interval )
     def mouseReleaseEvent( self, event ) :
