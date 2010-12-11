@@ -5,18 +5,14 @@ from PyQt4 import QtCore, QtGui
 QtCore.Signal = QtCore.pyqtSignal
 QtCore.Slot = QtCore.pyqtSlot
 
-import dbus
-import dbus.service
-from dbus.mainloop.glib import DBusGMainLoop
-
 import sys
 import time
 
 from widget import NumPadKey, TextEditKey
-from interface import Interface
-
+from backend import Backend
 
 class InputPad( QtGui.QWidget ) :
+    request_commit = QtCore.Signal( str )
     KEY_MAP = [ \
             [ "0", [ 4, 1, 1, 1 ], 0.9, ] \
             , \
@@ -69,9 +65,11 @@ class InputPad( QtGui.QWidget ) :
     FONT_NORMAL = QtGui.QFont()
     FONT_UNDERLINR = QtGui.QFont()
     FONT_UNDERLINR.setUnderline( True )
-    def __init__( self, parent = None ) :
-        QtGui.QWidget.__init__( self, parent )
-        #QtGui.QWidget.__init__( self, parent, QtCore.Qt.Dialog | QtCore.Qt.FramelessWindowHint )
+    def __init__( self, daemon_flag = False, parent = None ) :
+        if daemon_flag :
+            QtGui.QWidget.__init__( self, parent, QtCore.Qt.Dialog | QtCore.Qt.FramelessWindowHint )
+        else :
+            QtGui.QWidget.__init__( self, parent )
         self.setAttribute( QtCore.Qt.WA_Maemo5PortraitOrientation, True )
 
         self.layout = QtGui.QVBoxLayout()
@@ -105,30 +103,37 @@ class InputPad( QtGui.QWidget ) :
         #self.key_list[self.KEYCODE_BACKSPACE].enableAutoRepeat()
         self.key_list[self.KEYCODE_BACKSPACE].hide()
 
-        self.interface = Interface()
+        self.backend = Backend()
         self.mode = self.MODE_NORMAL
         self.punc_index = 0
 
+        if daemon_flag :
+            self.hide()
+        self.daemon_flag = daemon_flag
+    def callback_show( self, string ) :
+        self.textedit.setText( string )
+        self.textedit.moveCursor( QtGui.QTextCursor.End )
+        self.show()
     def update( self ) :
         update_stamp = []
         for i in range( len( self.KEY_MAP ) ) :
             update_stamp.append( False )
         if self.mode == self.MODE_NORMAL :
             index = 1
-            for item in self.interface.cand_list :
+            for item in self.backend.cand_list :
                 #print item
                 self.key_list[index].setText( item[2] )
                 update_stamp[index] = True
                 index = index + 1
-            text = self.interface.get_selected() + self.interface.code()
+            text = self.backend.get_selected() + self.backend.code()
             self.textedit.set_preedit( text )
         elif self.mode == self.MODE_SELECT :
             index = 1
-            for item in self.interface.cand_list :
+            for item in self.backend.cand_list :
                 self.key_list[index].setText( item[2] )
                 update_stamp[index] = True
                 index = index + 1
-            text = self.interface.get_selected() + self.interface.code()
+            text = self.backend.get_selected() + self.backend.code()
             self.textedit.set_preedit( text )
         elif self.mode == self.MODE_PUNC :
             index = 2
@@ -163,17 +168,17 @@ class InputPad( QtGui.QWidget ) :
     def slot_key_click( self, code ) :
         if self.mode == self.MODE_NORMAL :
             if code >= 2 and code <= 9 :
-                self.interface.append( str( code ) )
-                self.interface.gen_cand_list()
+                self.backend.append( str( code ) )
+                self.backend.gen_cand_list()
                 self.update()
-                #for node in self.interface.cand_list :
+                #for node in self.backend.cand_list :
                     #print node[0], node[1]
             elif code == self.KEYCODE_BACKSPACE :
-                if len( self.interface.code() ) > 0 :
-                    c = self.interface.pop()
-                    self.interface.gen_cand_list()
+                if len( self.backend.code() ) > 0 :
+                    c = self.backend.pop()
+                    self.backend.gen_cand_list()
                     self.update()
-                    if len( self.interface.code() ) <= 0 :
+                    if len( self.backend.code() ) <= 0 :
                         #self.key_list[code].pause_auto_repeat()
                         #self.key_list[code].disable()
                         pass
@@ -182,41 +187,41 @@ class InputPad( QtGui.QWidget ) :
                     cursor.deletePreviousChar()
                     pass
             elif code == 1 :
-                if len( self.interface.code() ) > 0 :
+                if len( self.backend.code() ) > 0 :
                     self.set_mode( self.MODE_SELECT )
                     self.update()
                 else :
                     self.set_mode( self.MODE_PUNC )
                     self.update()
             elif code == self.KEYCODE_NAVIGATE :
-                if len( self.interface.code() ) > 0 :
+                if len( self.backend.code() ) > 0 :
                     pass
                 else :
                     self.set_mode( self.MODE_NAVIGATE )
                     self.update()
         elif self.mode == self.MODE_SELECT :
             if code >= 1 and code <= 6 :
-                self.interface.select( code - 1 )
-                self.interface.gen_cand_list()
-                if len( self.interface.code() ) <= 0 :
-                    text = self.interface.get_selected()
-                    self.interface.commit()
+                self.backend.select( code - 1 )
+                self.backend.gen_cand_list()
+                if len( self.backend.code() ) <= 0 :
+                    text = self.backend.get_selected()
+                    self.backend.commit()
                     self.textedit.textCursor().insertText( text, self.textedit.normal_format )
                     self.set_mode( self.MODE_NORMAL )
                 self.update()
             elif code == self.KEYCODE_BACKSPACE :
-                c = self.interface.deselect()
-                self.interface.gen_cand_list()
+                c = self.backend.deselect()
+                self.backend.gen_cand_list()
                 if c == "" :
                     self.set_mode( self.MODE_NORMAL )
                 self.update()
             elif code == 7 :
-                self.interface.page_prev()
-                self.interface.gen_cand_list()
+                self.backend.page_prev()
+                self.backend.gen_cand_list()
                 self.update()
             elif code == 9 :
-                self.interface.page_next()
-                self.interface.gen_cand_list()
+                self.backend.page_next()
+                self.backend.gen_cand_list()
                 self.update()
         elif self.mode == self.MODE_PUNC :
             if code >= 2 and code <= 9 :
@@ -257,13 +262,21 @@ class InputPad( QtGui.QWidget ) :
             if code >= 0 and code <= 9 :
                 self.textedit.textCursor().insertText( str( code ), self.textedit.normal_format )
         pass
-
     def closeEvent( self, event ) :
-        self.hide()
-        #self.interface.backend.save()
+        if self.daemon_flag :
+            event.ignore()
+            self.hide()
+            self.textedit.set_preedit( "" )
+            self.set_mode( self.MODE_NORMAL )
+            text = self.textedit.toPlainText()
+            self.request_commit.emit( text )
+        else :
+            event.accept()
+        #self.backend.backend.save()
 
 if __name__ == "__main__" :
     app = QtGui.QApplication( sys.argv )
+
     pad = InputPad()
     pad.show()
     sys.exit( app.exec_() )

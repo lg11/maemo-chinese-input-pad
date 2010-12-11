@@ -7,6 +7,7 @@
 #define DBUS_CONN(obj) (G_TYPE_CHECK_INSTANCE_CAST((obj), DBUS_CONN, dbus_conn))
 
 typedef gboolean (*request_commit_func)( GObject* obj, GString gstr );
+
 typedef struct{
     GObject parent;
     //DBusGConnection* conn;

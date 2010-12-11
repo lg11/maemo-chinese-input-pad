@@ -5,14 +5,15 @@ gboolean dbus_conn_request_commit( dbus_conn* obj, GString gstr ){
     g_debug( "dbus_conn_request_commit" );
     return obj->request_commit( obj->plugin, gstr );
 }
+
 #include "bind.h"
 
 static void dbus_conn_class_init( dbus_conn_class* klass );
 static void dbus_conn_init( dbus_conn* obj );
 
-GType dbus_conn_get_type(void){
+GType dbus_conn_get_type( void ){
     static GType dbus_conn_type = 0;
-    if (!dbus_conn_type) {
+    if ( !dbus_conn_type ) {
         static const GTypeInfo dbus_conn_info = {
             sizeof( dbus_conn_class ),
             NULL,
@@ -24,7 +25,7 @@ GType dbus_conn_get_type(void){
             0,
             (GInstanceInitFunc)dbus_conn_init
         };
-        dbus_conn_type = g_type_register_static(G_TYPE_OBJECT, "dbus_conn", &dbus_conn_info, 0 );
+        dbus_conn_type = g_type_register_static( G_TYPE_OBJECT, "dbus_conn", &dbus_conn_info, 0 );
     }
     return dbus_conn_type;
 }
@@ -47,7 +48,7 @@ static void dbus_conn_init( dbus_conn* obj ){
 
     proxy = dbus_g_proxy_new_for_name( conn, "org.freedesktop.DBus", "/org/freedesktop/DBus", "org.freedesktop.DBus" );
 
-    dbus_g_proxy_call ( proxy, "RequestName", &error, G_TYPE_STRING, "me.him_plugin.dbus_conn", G_TYPE_UINT, 0, G_TYPE_INVALID, G_TYPE_UINT, &request_name_result, G_TYPE_INVALID );
+    dbus_g_proxy_call ( proxy, "RequestName", &error, G_TYPE_STRING, "me.maemo.input.chinese.plugin.dbus_conn", G_TYPE_UINT, 0, G_TYPE_INVALID, G_TYPE_UINT, &request_name_result, G_TYPE_INVALID );
     /*if (!dbus_g_proxy_call ( proxy, "RequestName", &error, G_TYPE_STRING, "me.dbus_conn", G_TYPE_UINT, 0, G_TYPE_INVALID, G_TYPE_UINT, &request_name_result, G_TYPE_INVALID))*/
         /*printf( "Failed to acquire org.designfu.SampleService %s\n", error->message );*/
 

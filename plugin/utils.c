@@ -12,7 +12,7 @@ int dbus_call_pad_show( const gchar* str ){
         conn = dbus_g_bus_get (DBUS_BUS_SESSION, &error);
 
     if (!proxy )
-        proxy = dbus_g_proxy_new_for_name( conn, "me.maemo_chinese_input_pad", "/", "me.maemo_chinese_input_pad" );
+        proxy = dbus_g_proxy_new_for_name( conn, "me.maemo.input.chinese", "/inputpad", "me.maemo.input.chinese.inputpad" );
 
     if ( !dbus_g_proxy_call( proxy, "show", &error, G_TYPE_STRING, str, G_TYPE_INVALID, G_TYPE_INVALID ) ) {
         g_debug( "failed to call: %s", error->message );
