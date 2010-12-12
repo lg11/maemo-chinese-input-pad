@@ -24,6 +24,7 @@ class Rotater( QtGui.QWidget ) :
         if event.size().width() >= 800 :
             self.hide()
     def closeEvent( self, event ) :
+        self.setAttribute( QtCore.Qt.WA_Maemo5PortraitOrientation, False )
         self.hide()
         event.ignore()
     #def showEvent( self, event ) :
@@ -127,14 +128,27 @@ class InputPad( QtGui.QWidget ) :
         self.punc_index = 0
 
         self.daemon_flag = daemon_flag
+        if self.daemon_flag :
+            self.desktop = QtGui.QApplication.desktop()
+            rect = self.desktop.screenGeometry()
+            if rect.height() < rect.width() :
+                self.portrait = False
+            else :
+                self.portrait = True
     def callback_show( self, string ) :
+        self.setAttribute( QtCore.Qt.WA_Maemo5PortraitOrientation, True )
         self.textedit.setText( string )
         self.textedit.moveCursor( QtGui.QTextCursor.End )
+        rect = self.desktop.screenGeometry()
+        if rect.height() < rect.width() :
+            self.portrait = False
+        else :
+            self.portrait = True
         self.show()
     def resizeEvent( self, event ) :
         #print self.width(), self.height(), self.isVisible()
-        if self.height() < 700 :
-            self.resize( 480, 700 )
+        if self.height() < 650 :
+            self.resize( 480, 650 )
     def context_update( self ) :
         update_stamp = []
         for i in range( len( self.KEY_MAP ) ) :
@@ -287,9 +301,13 @@ class InputPad( QtGui.QWidget ) :
         pass
     def closeEvent( self, event ) :
         if self.daemon_flag :
+            self.setAttribute( QtCore.Qt.WA_Maemo5PortraitOrientation, True )
             self.hide()
-            self.rotater.show()
             event.ignore()
+            if not self.portrait :
+                self.rotater.setAttribute( QtCore.Qt.WA_Maemo5PortraitOrientation, False )
+                self.rotater.resize( 1, 1 )
+                self.rotater.show()
             self.textedit.set_preedit( "" )
             self.set_mode( self.MODE_NORMAL )
             text = self.textedit.toPlainText()
