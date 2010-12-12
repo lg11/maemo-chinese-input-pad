@@ -32,6 +32,7 @@ class TextEditKey( QtGui.QTextEdit ) :
     longpressed = QtCore.Signal( int )
     clicked = QtCore.Signal( int )
     DEFAULT_LONGPRESS_INTERVAL = 350
+    DEFAULT_AUTO_REPEAT_INTERVAL = 65
     def __init__( self, keycode, parent = None ) :
         QtGui.QTextEdit.__init__( self, parent )
         self.keycode = keycode
@@ -40,6 +41,11 @@ class TextEditKey( QtGui.QTextEdit ) :
         self.longpress_interval = self.DEFAULT_LONGPRESS_INTERVAL
         self.preedit_start_pos = -1
         self.preedit_end_pos = -1
+
+        self.auto_repeat_timer = QtCore.QTimer()
+        self.auto_repeat_flag = True
+        self.auto_repeat_interval = self.DEFAULT_AUTO_REPEAT_INTERVAL
+        self.auto_repeat_timer.timeout.connect( self.auto_repeat )
     def __clear_preedit( self ) :
         if not ( self.preedit_start_pos < 0 ) :
             cursor = self.textCursor()
@@ -65,13 +71,23 @@ class TextEditKey( QtGui.QTextEdit ) :
     def mousePressEvent( self, event ) :
         self.timer.start( self.longpress_interval )
     def mouseReleaseEvent( self, event ) :
+        self.auto_repeat_timer.stop()
         if self.timer.isActive() :
             self.timer.stop()
             self.clicked.emit( self.keycode )
     @QtCore.Slot()
+    def auto_repeat( self ) :
+        self.auto_repeat_timer.stop()
+        self.auto_repeat_timer.start( self.auto_repeat_interval )
+        self.clicked.emit( self.keycode )
+    @QtCore.Slot()
     def timeout( self ) :
         self.timer.stop()
-        self.longpressed.emit( self.keycode )
+        if self.auto_repeat_flag :
+            self.auto_repeat_timer.start( self.auto_repeat_interval )
+            self.clicked.emit( self.keycode )
+        else :
+            self.longpressed.emit( self.keycode )
 
 
 class m_key( QtGui.QPushButton ) :

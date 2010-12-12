@@ -22,6 +22,7 @@ class Rotater( QtGui.QWidget ) :
         #print event.oldSize().width(), event.oldSize().height()
         #print event.size().width(), event.size().height()
         if event.size().width() >= 800 :
+            self.setAttribute( QtCore.Qt.WA_Maemo5PortraitOrientation, False )
             self.hide()
     def closeEvent( self, event ) :
         self.setAttribute( QtCore.Qt.WA_Maemo5PortraitOrientation, False )
@@ -98,6 +99,10 @@ class InputPad( QtGui.QWidget ) :
         self.layout.setSpacing( self.LAYOUT_SPACING )
         self.setLayout( self.layout )
 
+        #label = QtGui.QLabel()
+        #label.setFixedHeight( 10 )
+        #self.layout.addWidget( label )
+
         self.textedit = TextEditKey( self.KEYCODE_BACKSPACE, self )
         self.textedit.clicked.connect( self.slot_key_click )
         self.textedit.longpressed.connect( self.slot_key_longpress )
@@ -105,7 +110,7 @@ class InputPad( QtGui.QWidget ) :
         
         self.keypad_layout = QtGui.QGridLayout()
         self.keypad_layout.setSpacing( self.LAYOUT_SPACING )
-        self.keypad_layout.setContentsMargins( 0, 0, 0, 80 )
+        self.keypad_layout.setContentsMargins( 0, 0, 0, 65 )
         self.layout.addLayout( self.keypad_layout )
 
         self.key_list = []
@@ -145,10 +150,11 @@ class InputPad( QtGui.QWidget ) :
         else :
             self.portrait = True
         self.show()
+        self.update()
     def resizeEvent( self, event ) :
         #print self.width(), self.height(), self.isVisible()
-        if self.height() < 650 :
-            self.resize( 480, 650 )
+        if self.height() < 655 :
+            self.resize( 480, 655 )
     def context_update( self ) :
         update_stamp = []
         for i in range( len( self.KEY_MAP ) ) :
