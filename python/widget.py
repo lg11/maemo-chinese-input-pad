@@ -62,6 +62,7 @@ class TextEditKey( QtGui.QTextEdit ) :
         self.preedit_start_pos = cursor.position()
         cursor.insertText( text, self.preedit_format )
         self.preedit_end_pos = cursor.position()
+        self.ensureCursorVisible()
     def set_preedit( self, text ) :
         self.__clear_preedit()
         if len( text ) > 0 :

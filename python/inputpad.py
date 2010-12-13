@@ -210,9 +210,7 @@ class InputPad( QtGui.QWidget ) :
                 self.portrait = False
             else :
                 self.portrait = True
-
     def callback_show( self, string ) :
-        #self.setAttribute( QtCore.Qt.WA_Maemo5PortraitOrientation, True )
         self.textedit.setText( string )
         self.textedit.moveCursor( QtGui.QTextCursor.End )
         rect = self.desktop.screenGeometry()
@@ -221,14 +219,10 @@ class InputPad( QtGui.QWidget ) :
         else :
             self.portrait = True
         self.show()
-        for key in self.key_label_list[-4:-1] :
-            key.repaint()
-        #self.update()
     def resizeEvent( self, event ) :
         #print self.width(), self.height(), self.isVisible()
         if self.height() < 655 :
             self.resize( 480, 655 )
-            self.update()
     def context_update( self ) :
         update_stamp = []
         for i in range( len( self.KEY_MAP ) ) :
@@ -302,6 +296,7 @@ class InputPad( QtGui.QWidget ) :
                 else :
                     cursor = self.textedit.textCursor()
                     cursor.deletePreviousChar()
+                    self.textedit.ensureCursorVisible()
                     pass
             elif code == 1 :
                 if len( self.backend.code() ) > 0 :
@@ -327,6 +322,7 @@ class InputPad( QtGui.QWidget ) :
                     text = self.backend.get_selected()
                     self.backend.commit()
                     self.textedit.textCursor().insertText( text, self.textedit.normal_format )
+                    self.textedit.ensureCursorVisible()
                     self.set_mode( self.MODE_NORMAL )
                 self.context_update()
             elif code == self.KEYCODE_BACKSPACE :
@@ -348,6 +344,7 @@ class InputPad( QtGui.QWidget ) :
                 index = code - 2
                 punc_list = self.PUNC_MAP[self.punc_index]
                 self.textedit.textCursor().insertText( punc_list[index].decode( "utf-8" ), self.textedit.normal_format )
+                self.textedit.ensureCursorVisible()
                 self.set_mode( self.MODE_NORMAL )
                 self.context_update()
             elif code == self.KEYCODE_BACKSPACE :
@@ -377,12 +374,14 @@ class InputPad( QtGui.QWidget ) :
                 self.textedit.moveCursor( QtGui.QTextCursor.Right )
             elif code == self.KEYCODE_BACKSPACE :
                 self.textedit.textCursor().deletePreviousChar()
+                self.textedit.ensureCursorVisible()
 
     @QtCore.Slot( int )
     def slot_key_longpress( self, code ) :
         if self.mode == self.MODE_NORMAL :
             if code >= 0 and code <= 9 :
                 self.textedit.textCursor().insertText( str( code ), self.textedit.normal_format )
+                self.textedit.ensureCursorVisible()
         pass
     def closeEvent( self, event ) :
         if self.daemon_flag :
