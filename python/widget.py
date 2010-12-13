@@ -46,6 +46,9 @@ class TextEditKey( QtGui.QTextEdit ) :
         self.auto_repeat_flag = True
         self.auto_repeat_interval = self.DEFAULT_AUTO_REPEAT_INTERVAL
         self.auto_repeat_timer.timeout.connect( self.auto_repeat )
+        self.normal_format = QtGui.QTextCharFormat()
+        self.preedit_format = QtGui.QTextCharFormat()
+        self.preedit_format.setFontUnderline( True )
     def __clear_preedit( self ) :
         if not ( self.preedit_start_pos < 0 ) :
             cursor = self.textCursor()
@@ -54,9 +57,6 @@ class TextEditKey( QtGui.QTextEdit ) :
                 cursor.deletePreviousChar()
         self.preedit_start_pos = -1
         self.preedit_end_pos = -1
-        self.normal_format = QtGui.QTextCharFormat()
-        self.preedit_format = QtGui.QTextCharFormat()
-        self.preedit_format.setFontUnderline( True )
     def __insert_preedit( self, text ) :
         cursor = self.textCursor()
         self.preedit_start_pos = cursor.position()
