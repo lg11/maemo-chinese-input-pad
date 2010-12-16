@@ -162,7 +162,20 @@ class m_key( QtGui.QPushButton ) :
             self.need_cancel_pause_auto_repeat_flag = False
             self.disable_timeout()
 
-class NumPadKey( Key ) :
-    def __init__( self, keycode, parent ) :
-        Key.__init__( self, keycode, parent )
+#class IconSet() :
+    #def __init__( self ) :
+        #icon = QtGui.QIcon.fromTheme( "general_back" )
+        #self.left = icon
+        #icon = QtGui.QIcon.fromTheme( "general_forward" )
+        #self.right = icon
+        #icon = QtGui.QIcon.fromTheme( "keyboard_move_up" )
+        #self.up = icon
+        #icon = QtGui.QIcon.fromTheme( "keyboard_move_down" )
+        #self.down = icon
+        #self.null = QtGui.QIcon()
+
+NumPadKey = Key
+#class NumPadKey( Key ) :
+    #def __init__( self, keycode, parent ) :
+        #Key.__init__( self, keycode, parent )
     

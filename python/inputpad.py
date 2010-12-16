@@ -5,8 +5,7 @@ from PyQt4 import QtCore, QtGui
 QtCore.Signal = QtCore.pyqtSignal
 QtCore.Slot = QtCore.pyqtSlot
 
-import sys
-import time
+#import time
 
 #import rotate
 from widget import NumPadKey, TextEditKey
@@ -22,19 +21,15 @@ class Rotater( QtGui.QWidget ) :
         #print event.oldSize().width(), event.oldSize().height()
         #print event.size().width(), event.size().height()
         if event.size().width() >= 800 :
-            #self.setAttribute( QtCore.Qt.WA_Maemo5PortraitOrientation, False )
             self.hide()
     def closeEvent( self, event ) :
-        #self.setAttribute( QtCore.Qt.WA_Maemo5PortraitOrientation, False )
         self.hide()
         event.ignore()
-    #def showEvent( self, event ) :
-        #pass
 
 class InputPad( QtGui.QWidget ) :
     request_commit = QtCore.Signal( str )
     KEY_MAP = [ \
-            [ "0", [ 4, 1, 1, 1 ], 0.95, ] \
+            [ "0", [ 4, 1, 1, 1 ], 1.0, ] \
             , \
             [ "1", [ 1, 0, 1, 1 ], 1.0, ] \
             , \
@@ -54,9 +49,9 @@ class InputPad( QtGui.QWidget ) :
             , \
             [ "9", [ 3, 2, 1, 1 ], 1.0, ] \
             , \
-            [ "navigate", [ 4, 0, 1, 1 ], 0.95, ] \
+            [ "navigate", [ 4, 0, 1, 1 ], 1.0, ] \
             , \
-            [ "mode", [ 4, 2, 1, 1 ], 0.95, ] \
+            [ "mode", [ 4, 2, 1, 1 ], 1.0, ] \
             , \
             [ "backspace", [ 0, 0, 1, 3 ], 0.85, ] \
             , \
@@ -66,21 +61,21 @@ class InputPad( QtGui.QWidget ) :
             , \
             [ "1", "", "", "", "sym", ] \
             , \
-            [ "2", "", "", "up", "abc", ] \
+            [ "2", "", "", "∧", "abc", ] \
             , \
             [ "3", "", "", "", "def", ] \
             , \
-            [ "4", "", "", "left", "ghi", ] \
+            [ "4", "", "", "＜", "ghi", ] \
             , \
             [ "5", "", "", "", "jkl", ] \
             , \
-            [ "6", "", "", "right", "mno", ] \
+            [ "6", "", "", "＞", "mno", ] \
             , \
-            [ "7", "<", "", "", "pqrs", ] \
+            [ "7", "＜", "", "", "pqrs", ] \
             , \
-            [ "8", "", "", "down", "tuv", ] \
+            [ "8", "", "", "∨", "tuv", ] \
             , \
-            [ "9", ">", "", "", "wxyz", ] \
+            [ "9", "＞", "", "", "wxyz", ] \
             , \
             [ "", "", "", "", "navigate", ] \
             , \
@@ -89,10 +84,16 @@ class InputPad( QtGui.QWidget ) :
             [ "backspace", "", "", "", "", ] \
             , \
             ]
+    for l in KEY_TEXT :
+        for i in range( len( l ) ) :
+            l[i] = l[i].decode( "utf-8" )
     KEYCODE_NAVIGATE = 10
     KEYCODE_MODE = 11
     KEYCODE_BACKSPACE = 12
     KEY_HEIGHT = 110
+    BOTTOM_SPACING = 105
+    TOP_SPACING = 0
+    PAD_HEIGHT = 690
     LAYOUT_SPACING = 0
     MODE_NORMAL = 0
     MODE_SELECT = 1
@@ -109,6 +110,9 @@ class InputPad( QtGui.QWidget ) :
             [ "*", "#", "\\", "+", "-", "=", "*", "/", ] \
             , \
             ]
+    for l in PUNC_MAP :
+        for i in range( len( l ) ) :
+            l[i] = l[i].decode( "utf-8" )
 
 
     FONT_NORMAL = QtGui.QFont()
@@ -137,23 +141,23 @@ class InputPad( QtGui.QWidget ) :
 
         self.layout = QtGui.QVBoxLayout()
         self.layout.setSpacing( self.LAYOUT_SPACING )
+        #self.layout.setContentsMargins( 0, self.TOP_SPACING, 0, self.BOTTOM_SPACING )
+        self.layout.setSpacing( 0 )
         self.setLayout( self.layout )
-
-        #label = QtGui.QLabel()
-        #label.setFixedHeight( 10 )
-        #self.layout.addWidget( label )
+        #layout = QtGui.QVBoxLayout()
+        #layout.addLayout( self.layout )
+        #self.setLayout( layout )
 
         self.textedit = TextEditKey( self.KEYCODE_BACKSPACE, self )
+        #self.textedit.setStyleSheet( "QTextEdit { border-width : 0px ; padding : 0px }" )
         #self.textedit.setPalette( self.text_palette )
-        #style = QtGui.QApplication.style()
-        #self.textedit.setStyle( style )
         self.textedit.clicked.connect( self.slot_key_click )
         self.textedit.longpressed.connect( self.slot_key_longpress )
         self.layout.addWidget( self.textedit )
         
         self.keypad_layout = QtGui.QGridLayout()
         self.keypad_layout.setSpacing( self.LAYOUT_SPACING )
-        self.keypad_layout.setContentsMargins( 0, 0, 0, 65 )
+        self.keypad_layout.setContentsMargins( 0, 0, 0, self.BOTTOM_SPACING )
         self.layout.addLayout( self.keypad_layout )
 
         self.key_list = []
@@ -213,6 +217,7 @@ class InputPad( QtGui.QWidget ) :
     def callback_show( self, string ) :
         self.textedit.setText( string )
         self.textedit.moveCursor( QtGui.QTextCursor.End )
+        self.textedit.ensureCursorVisible()
         rect = self.desktop.screenGeometry()
         if rect.height() < rect.width() :
             self.portrait = False
@@ -221,8 +226,8 @@ class InputPad( QtGui.QWidget ) :
         self.show()
     def resizeEvent( self, event ) :
         #print self.width(), self.height(), self.isVisible()
-        if self.height() < 655 :
-            self.resize( 480, 655 )
+        if self.height() < self.PAD_HEIGHT :
+            self.resize( 480, self.PAD_HEIGHT )
     def context_update( self ) :
         update_stamp = []
         for i in range( len( self.KEY_MAP ) ) :
@@ -251,12 +256,18 @@ class InputPad( QtGui.QWidget ) :
             index = 2
             punc_list = self.PUNC_MAP[self.punc_index]
             for punc in punc_list :
-                self.key_label_list[index].setText( punc.decode( "utf-8" ) )
+                self.key_label_list[index].setText( punc )
                 update_stamp[index] = True
                 index = index + 1
         for i in range( len( self.KEY_MAP ) ) :
             if not update_stamp[i] :
                 self.key_label_list[i].setText( self.KEY_TEXT[i][self.mode] )
+                #if self.KEY_ICON[i][self.mode] :
+                    #self.key_label_list[i].setText( "" )
+                    #self.key_list[i].setIcon( self.KEY_ICON[i][self.mode] )
+                #else :
+                    #self.key_list[i].setIcon( self.icon.null )
+                    #self.key_label_list[i].setText( self.KEY_TEXT[i][self.mode] )
 
     def __reset_mode_setting( self ) :
         #for i in range( len( self.key_list ) ) :
@@ -343,7 +354,7 @@ class InputPad( QtGui.QWidget ) :
             if code >= 2 and code <= 9 :
                 index = code - 2
                 punc_list = self.PUNC_MAP[self.punc_index]
-                self.textedit.textCursor().insertText( punc_list[index].decode( "utf-8" ), self.textedit.normal_format )
+                self.textedit.textCursor().insertText( punc_list[index], self.textedit.normal_format )
                 self.textedit.ensureCursorVisible()
                 self.set_mode( self.MODE_NORMAL )
                 self.context_update()
@@ -399,7 +410,12 @@ class InputPad( QtGui.QWidget ) :
             event.accept()
         #self.backend.backend.save()
 
+#class Pad( QtGui.QWidget ) :
+    #def __init__( self, daemon_flag = False, parent = None ) :
+
+
 if __name__ == "__main__" :
+    import sys
     app = QtGui.QApplication( sys.argv )
 
     pad = InputPad()
