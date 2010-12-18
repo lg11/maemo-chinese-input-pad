@@ -1,9 +1,9 @@
 #-!- coding=utf-8 -!-
 
-#from PySide import QtCore, QtGui
-from PyQt4 import QtCore, QtGui
-QtCore.Signal = QtCore.pyqtSignal
-QtCore.Slot = QtCore.pyqtSlot
+from PySide import QtCore, QtGui
+#from PyQt4 import QtCore, QtGui
+#QtCore.Signal = QtCore.pyqtSignal
+#QtCore.Slot = QtCore.pyqtSlot
 
 #import time
 
@@ -17,14 +17,60 @@ class Rotater( QtGui.QWidget ) :
         self.setAttribute( QtCore.Qt.WA_Maemo5PortraitOrientation, False )
         self.setFixedHeight( 1 )
     def resizeEvent( self, event ) :
-        #print "resize"
-        #print event.oldSize().width(), event.oldSize().height()
-        #print event.size().width(), event.size().height()
         if event.size().width() >= 800 :
             self.hide()
     def closeEvent( self, event ) :
         self.hide()
         event.ignore()
+
+class CharRoller( QtCore.QObject ) :
+    ROLLER = [ "abcABC", "defDEF", "ghiGHI", "jklJKL", "mnoMNO", "pqrsPQRS" ,"tuvTUV", "wxyzWXYZ" ]
+    timeout_interval = 1000
+    commit = QtCore.Signal( str )
+    #timeout = QtCore.Signal()
+    def __init__( self ) :
+        QtCore.QObject.__init__( self )
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect( self.slot_timeout )
+        self.roller = -1
+        self.code = -1
+    def slot_timeout( self ) :
+        self.timer.stop()
+        c = self.ROLLER[self.code][self.roller]
+        self.code = -1
+        self.roller = -1
+        self.commit.emit( c )
+        #self.timeout.emit()
+    def cancel( self ) :
+        self.timer.stop()
+        self.code = -1
+        self.roller = -1
+    def stop( self ) :
+        if self.code >= 0 :
+            c = self.ROLLER[self.code][self.roller]
+            self.code = -1
+            self.roller = -1
+            self.commit.emit( c )
+        self.cancel()
+    def roll( self, code ) :
+        self.timer.stop()
+        if code == self.code :
+            if self.roller < len( self.ROLLER[code] ) - 1 :
+                self.roller = self.roller + 1
+            else :
+                self.roller = 0
+            self.timer.start( self.timeout_interval )
+        else :
+            if self.code >= 0 :
+                self.commit.emit( self.ROLLER[self.code][self.roller] )
+            self.code = code
+            self.roller = 0
+            self.timer.start( self.timeout_interval )
+    def get( self ) :
+        c = ""
+        if self.code >= 0 :
+            c = self.ROLLER[self.code][self.roller]
+        return c
 
 class InputPad( QtGui.QWidget ) :
     request_commit = QtCore.Signal( str )
@@ -57,31 +103,31 @@ class InputPad( QtGui.QWidget ) :
             , \
             ]
     KEY_TEXT = [ \
-            [ "0", "", "", "", "undefine", ] \
+            [ "0", "", "", "", "0", "undefine", ] \
             , \
-            [ "1", "", "", "", "sym", ] \
+            [ "1", "", "", "", "1", "sym", ] \
             , \
-            [ "2", "", "", "∧", "abc", ] \
+            [ "2", "", "", "∧", "2", "abc", ] \
             , \
-            [ "3", "", "", "", "def", ] \
+            [ "3", "", "", "", "3", "def", ] \
             , \
-            [ "4", "", "", "＜", "ghi", ] \
+            [ "4", "", "", "＜", "4", "ghi", ] \
             , \
-            [ "5", "", "", "", "jkl", ] \
+            [ "5", "", "", "", "5", "jkl", ] \
             , \
-            [ "6", "", "", "＞", "mno", ] \
+            [ "6", "", "", "＞", "6", "mno", ] \
             , \
-            [ "7", "＜", "", "", "pqrs", ] \
+            [ "7", "＜", "", "", "7", "pqrs", ] \
             , \
-            [ "8", "", "", "∨", "tuv", ] \
+            [ "8", "", "", "∨", "8", "tuv", ] \
             , \
-            [ "9", "＞", "", "", "wxyz", ] \
+            [ "9", "＞", "", "", "9", "wxyz", ] \
             , \
-            [ "", "", "", "", "navigate", ] \
+            [ "", "", "", "", "", "navigate", ] \
             , \
-            [ "", "", "", "", "mode", ] \
+            [ "", "", "", "", "", "mode", ] \
             , \
-            [ "backspace", "", "", "", "", ] \
+            [ "backspace", "", "", "", "", "", ] \
             , \
             ]
     for l in KEY_TEXT :
@@ -99,6 +145,7 @@ class InputPad( QtGui.QWidget ) :
     MODE_SELECT = 1
     MODE_PUNC = 2
     MODE_NAVIGATE = 3
+    MODE_ROLLER = 4
 
     PUNC_MAP = [ \
             [ " ", "\n", "，", "。", "？", "……", "～", "！", ] \
@@ -203,6 +250,8 @@ class InputPad( QtGui.QWidget ) :
         self.key_list[self.KEYCODE_BACKSPACE].hide()
 
         self.backend = Backend()
+        self.roller = CharRoller()
+        self.roller.commit.connect( self.roller_commit )
         self.mode = self.MODE_NORMAL
         self.punc_index = 0
 
@@ -259,20 +308,20 @@ class InputPad( QtGui.QWidget ) :
                 self.key_label_list[index].setText( punc )
                 update_stamp[index] = True
                 index = index + 1
+        elif self.mode == self.MODE_ROLLER :
+            self.textedit.set_preedit( self.roller.get() )
         for i in range( len( self.KEY_MAP ) ) :
             if not update_stamp[i] :
                 self.key_label_list[i].setText( self.KEY_TEXT[i][self.mode] )
-                #if self.KEY_ICON[i][self.mode] :
-                    #self.key_label_list[i].setText( "" )
-                    #self.key_list[i].setIcon( self.KEY_ICON[i][self.mode] )
-                #else :
-                    #self.key_list[i].setIcon( self.icon.null )
-                    #self.key_label_list[i].setText( self.KEY_TEXT[i][self.mode] )
-
+    def roller_commit( self, c ) :
+        self.textedit.textCursor().insertText( c, self.textedit.normal_format )
+        self.textedit.ensureCursorVisible()
+        self.context_update()
     def __reset_mode_setting( self ) :
         #for i in range( len( self.key_list ) ) :
             #self.key_label_list[i].setFont( self. FONT_NORMAL )
         self.key_list[self.KEYCODE_NAVIGATE].setDown( False )
+        self.key_list[self.KEYCODE_MODE].setDown( False )
     def set_mode( self, mode ) :
         self.__reset_mode_setting()
         self.mode = mode
@@ -285,6 +334,8 @@ class InputPad( QtGui.QWidget ) :
             self.punc_index = 0
         elif mode == self.MODE_NAVIGATE :
             self.key_list[self.KEYCODE_NAVIGATE].setDown( True )
+        elif mode == self.MODE_ROLLER :
+            self.key_list[self.KEYCODE_MODE].setDown( True )
             
     @QtCore.Slot( int )
     def slot_key_click( self, code ) :
@@ -323,8 +374,11 @@ class InputPad( QtGui.QWidget ) :
                     self.set_mode( self.MODE_NAVIGATE )
                     self.context_update()
             elif code == self.KEYCODE_MODE :
-                #self.setAttribute( QtCore.Qt.WA_Maemo5PortraitOrientation, False )
-                pass
+                if len( self.backend.code() ) > 0 :
+                    pass
+                else :
+                    self.set_mode( self.MODE_ROLLER )
+                    self.context_update()
         elif self.mode == self.MODE_SELECT :
             if code >= 1 and code <= 6 :
                 self.backend.select( code - 1 )
@@ -386,11 +440,35 @@ class InputPad( QtGui.QWidget ) :
             elif code == self.KEYCODE_BACKSPACE :
                 self.textedit.textCursor().deletePreviousChar()
                 self.textedit.ensureCursorVisible()
+        elif self.mode == self.MODE_ROLLER :
+            if code >= 2 and code <= 9 :
+                self.roller.roll( code - 2 )
+                self.context_update()
+            elif code == 1 :
+                self.roller.stop()
+            elif code == self.KEYCODE_BACKSPACE :
+                if self.roller.code > 0 :
+                    self.roller.cancel()
+                else :
+                    self.textedit.textCursor().deletePreviousChar()
+                    self.textedit.ensureCursorVisible()
+                self.context_update()
+            elif code == self.KEYCODE_MODE :
+                if self.roller.code > 0 :
+                    self.roller.stop()
+                self.set_mode( self.MODE_NORMAL )
+                self.context_update()
 
     @QtCore.Slot( int )
     def slot_key_longpress( self, code ) :
         if self.mode == self.MODE_NORMAL :
             if code >= 0 and code <= 9 :
+                self.textedit.textCursor().insertText( str( code ), self.textedit.normal_format )
+                self.textedit.ensureCursorVisible()
+        elif self.mode == self.MODE_ROLLER :
+            if code >= 0 and code <= 9 :
+                if self.roller.code > 0 :
+                    self.roller.stop()
                 self.textedit.textCursor().insertText( str( code ), self.textedit.normal_format )
                 self.textedit.ensureCursorVisible()
         pass
