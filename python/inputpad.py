@@ -24,7 +24,7 @@ class Rotater( QtGui.QWidget ) :
         event.ignore()
 
 class CharRoller( QtCore.QObject ) :
-    ROLLER = [ "abcABC", "defDEF", "ghiGHI", "jklJKL", "mnoMNO", "pqrsPQRS" ,"tuvTUV", "wxyzWXYZ" ]
+    ROLLER = [ " @", ".,", "abcABC", "defDEF", "ghiGHI", "jklJKL", "mnoMNO", "pqrsPQRS" ,"tuvTUV", "wxyzWXYZ" ]
     timeout_interval = 1000
     commit = QtCore.Signal( str )
     #timeout = QtCore.Signal()
@@ -441,11 +441,11 @@ class InputPad( QtGui.QWidget ) :
                 self.textedit.textCursor().deletePreviousChar()
                 self.textedit.ensureCursorVisible()
         elif self.mode == self.MODE_ROLLER :
-            if code >= 2 and code <= 9 :
-                self.roller.roll( code - 2 )
+            if code >= 0 and code <= 9 :
+                self.roller.roll( code )
                 self.context_update()
-            elif code == 1 :
-                self.roller.stop()
+            #elif code == 1 :
+                #self.roller.stop()
             elif code == self.KEYCODE_BACKSPACE :
                 if self.roller.code > 0 :
                     self.roller.cancel()
