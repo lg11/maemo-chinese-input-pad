@@ -5,8 +5,8 @@ import dbus.service
 
 class Interface( dbus.service.Object ):
     def commit( self, text ) :
-        #text = str( text.toUtf8() )
-        text = str( text.encode( "utf-8" ) )
+        text = str( text.toUtf8() )
+        #text = str( text.encode( "utf-8" ) )
         #bus = dbus.SessionBus()
         bus = self.session_bus
         plugin = bus.get_object('me.maemo.input.chinese.plugin.dbus_conn', '/')

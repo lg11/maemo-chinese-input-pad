@@ -79,8 +79,10 @@ gboolean check_x11win_classhint( Window win ){
     prop_list = XListProperties( dpy, win, &prop_count );
     g_debug("check_x11win_classhint get prop_count =  %d", prop_count );
 
-    if ( root == parent ){
+    if ( ( root == parent ) && ( prop_count <= 0 ) ) {
         //输入窗口就是自己根窗口的变态，我也只想得出n900系统浏览器这一个了……
+        //and all qt program orz...
+        //so check prop_count <= 0
         g_debug("check_x11win_classhint find bt mircoB");
         XFree(prop_list);
         return_flag = FALSE;

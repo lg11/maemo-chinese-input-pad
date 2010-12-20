@@ -1,9 +1,9 @@
 #-!- coding=utf-8 -!-
 
-from PySide import QtCore, QtGui
-#from PyQt4 import QtCore, QtGui
-#QtCore.Signal = QtCore.pyqtSignal
-#QtCore.Slot = QtCore.pyqtSlot
+#from PySide import QtCore, QtGui
+from PyQt4 import QtCore, QtGui
+QtCore.Signal = QtCore.pyqtSignal
+QtCore.Slot = QtCore.pyqtSlot
 
 class Key( QtGui.QPushButton ) :
     longpressed = QtCore.Signal( int )
