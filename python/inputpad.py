@@ -9,6 +9,7 @@ QtCore.Slot = QtCore.pyqtSlot
 
 #import rotate
 from widget import NumPadKey, TextEditKey
+from keyboard import KeyPad, KEYPAD_MAP, KEYPAD_MAP_NAME
 from backend import Backend
 
 class Rotater( QtGui.QWidget ) :
@@ -137,9 +138,10 @@ class InputPad( QtGui.QWidget ) :
     KEYCODE_MODE = 11
     KEYCODE_BACKSPACE = 12
     KEY_HEIGHT = 110
-    BOTTOM_SPACING = 105
-    TOP_SPACING = 0
+    #BOTTOM_SPACING = 105
+    #TOP_SPACING = 0
     PAD_HEIGHT = 690
+    TEXTEDIT_HEIGHT = 140
     LAYOUT_SPACING = 0
     MODE_NORMAL = 0
     MODE_SELECT = 1
@@ -187,25 +189,33 @@ class InputPad( QtGui.QWidget ) :
         self.rotater = Rotater()
 
         self.layout = QtGui.QVBoxLayout()
-        self.layout.setSpacing( self.LAYOUT_SPACING )
-        #self.layout.setContentsMargins( 0, self.TOP_SPACING, 0, self.BOTTOM_SPACING )
         self.layout.setSpacing( 0 )
+        self.layout.setContentsMargins( 0, 0, 0, 0 )
         self.setLayout( self.layout )
-        #layout = QtGui.QVBoxLayout()
-        #layout.addLayout( self.layout )
-        #self.setLayout( layout )
 
         self.textedit = TextEditKey( self.KEYCODE_BACKSPACE, self )
         #self.textedit.setStyleSheet( "QTextEdit { border-width : 0px ; padding : 0px }" )
         #self.textedit.setPalette( self.text_palette )
+        self.textedit.setFixedHeight( self.TEXTEDIT_HEIGHT )
         self.textedit.clicked.connect( self.slot_key_click )
         self.textedit.longpressed.connect( self.slot_key_longpress )
         self.layout.addWidget( self.textedit )
         
-        self.keypad_layout = QtGui.QGridLayout()
-        self.keypad_layout.setSpacing( self.LAYOUT_SPACING )
-        self.keypad_layout.setContentsMargins( 0, 0, 0, self.BOTTOM_SPACING )
-        self.layout.addLayout( self.keypad_layout )
+        self.stack = QtGui.QStackedLayout()
+        self.layout.addLayout( self.stack )
+        self.keypad_list = []
+        
+        keypad = QtGui.QWidget( self )
+        self.keypad_list.append( keypad )
+
+        keypad_vlayout = QtGui.QVBoxLayout()
+        keypad_vlayout.setSpacing( 0 )
+        #keypad_vlayout.setContentsMargins( 0, 0, 0, 0 )
+        keypad.setLayout( keypad_vlayout )
+        keypad_layout = QtGui.QGridLayout()
+        keypad_layout.setSpacing( 0 )
+        keypad_layout.setContentsMargins( 0, 0, 0, 0 )
+        keypad_vlayout.addLayout( keypad_layout )
 
         self.key_list = []
         self.key_label_list = []
@@ -216,7 +226,7 @@ class InputPad( QtGui.QWidget ) :
             key.setFocusProxy( self.textedit )
             #key.setText( self.KEY_TEXT[keycode][0] )
             key.setFixedHeight( self.KEY_HEIGHT * key_map[2] )
-            self.keypad_layout.addWidget( key, key_map[1][0], key_map[1][1] ,key_map[1][2] ,key_map[1][3] )
+            keypad_layout.addWidget( key, key_map[1][0], key_map[1][1] ,key_map[1][2] ,key_map[1][3] )
             self.key_list.append( key )
             key.clicked.connect( self.slot_key_click )
             key.longpressed.connect( self.slot_key_longpress )
@@ -246,12 +256,32 @@ class InputPad( QtGui.QWidget ) :
             label.setText( self.KEY_TEXT[keycode][-1] )
             self.key_sub_label_list.append( label )
 
-        #self.key_list[self.KEYCODE_BACKSPACE].enableAutoRepeat()
+        keypad_vlayout.addStretch()
+
         self.key_list[self.KEYCODE_BACKSPACE].hide()
+
+        self.stack.addWidget( keypad )
+
+        self.tab = QtGui.QTabBar( self )
+        self.tab.addTab( "中".decode( "utf-8" ) )
+        self.layout.addWidget( self.tab )
+
+        for i in range( len( KEYPAD_MAP ) ) :
+            keypad = KeyPad( KEYPAD_MAP[i] )
+            keypad.commit.connect( self.slot_commit )
+            for row in keypad.key_list :
+                for key in row :
+                    if key :
+                        key.setFocusProxy( self.textedit )
+            self.keypad_list.append( keypad )
+            self.stack.addWidget( keypad )
+            self.tab.addTab( KEYPAD_MAP_NAME[i] )
+
+        self.tab.currentChanged.connect( self.stack.setCurrentIndex )
 
         self.backend = Backend()
         self.roller = CharRoller()
-        self.roller.commit.connect( self.roller_commit )
+        self.roller.commit.connect( self.slot_commit )
         self.mode = self.MODE_NORMAL
         self.punc_index = 0
 
@@ -313,7 +343,7 @@ class InputPad( QtGui.QWidget ) :
         for i in range( len( self.KEY_MAP ) ) :
             if not update_stamp[i] :
                 self.key_label_list[i].setText( self.KEY_TEXT[i][self.mode] )
-    def roller_commit( self, c ) :
+    def slot_commit( self, c ) :
         self.textedit.textCursor().insertText( c, self.textedit.normal_format )
         self.textedit.ensureCursorVisible()
         self.context_update()
