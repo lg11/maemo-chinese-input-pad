@@ -111,7 +111,8 @@ gboolean check_x11win_classhint( Window win ){
         g_debug( "check_x11win_classhint res_name = %s, res_class = %s", classhint.res_name, classhint.res_class );
     if ( g_strcmp0( classhint.res_class, "Firefox" ) == 0 ){
         g_debug("check_x11win_classhint find firefox");
-        return_flag = FALSE;
+        /*return_flag = FALSE;*/
+        return_flag = TRUE;
     }
     XFree( classhint.res_name );
     XFree( classhint.res_class );

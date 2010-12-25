@@ -104,31 +104,31 @@ class InputPad( QtGui.QWidget ) :
             , \
             ]
     KEY_TEXT = [ \
-            [ "0", "", "", "", "0", "undefine", ] \
+            [ "0", "", "", "", "0", "", "undefine", ] \
             , \
-            [ "1", "", "", "", "1", "sym", ] \
+            [ "1", "", "", "", "1", "", "sym", ] \
             , \
-            [ "2", "", "", "∧", "2", "abc", ] \
+            [ "2", "", "", "∧", "2", "", "abc", ] \
             , \
-            [ "3", "", "", "", "3", "def", ] \
+            [ "3", "", "", "", "3", "", "def", ] \
             , \
-            [ "4", "", "", "＜", "4", "ghi", ] \
+            [ "4", "", "", "＜", "4", "", "ghi", ] \
             , \
-            [ "5", "", "", "", "5", "jkl", ] \
+            [ "5", "", "", "", "5", "", "jkl", ] \
             , \
-            [ "6", "", "", "＞", "6", "mno", ] \
+            [ "6", "", "", "＞", "6", "", "mno", ] \
             , \
-            [ "7", "＜", "", "", "7", "pqrs", ] \
+            [ "7", "＜", "", "", "7", "＜", "pqrs", ] \
             , \
-            [ "8", "", "", "∨", "8", "tuv", ] \
+            [ "8", "", "", "∨", "8", "", "tuv", ] \
             , \
-            [ "9", "＞", "", "", "9", "wxyz", ] \
+            [ "9", "＞", "", "", "9", "＞", "wxyz", ] \
             , \
-            [ "", "", "", "", "", "navigate", ] \
+            [ "", "", "", "", "", "", "navigate", ] \
             , \
-            [ "", "", "", "", "", "mode", ] \
+            [ "", "", "", "", "", "", "mode", ] \
             , \
-            [ "backspace", "", "", "", "", "", ] \
+            [ "backspace", "", "", "", "", "", "", ] \
             , \
             ]
     for l in KEY_TEXT :
@@ -148,6 +148,7 @@ class InputPad( QtGui.QWidget ) :
     MODE_PUNC = 2
     MODE_NAVIGATE = 3
     MODE_ROLLER = 4
+    MODE_FILTER = 5
 
     PUNC_MAP = [ \
             [ " ", "\n", "，", "。", "？", "……", "～", "！", ] \
@@ -284,6 +285,8 @@ class InputPad( QtGui.QWidget ) :
         self.roller.commit.connect( self.slot_commit )
         self.mode = self.MODE_NORMAL
         self.punc_index = 0
+        self.pinyin_list = []
+        self.pinyin_index = 0
 
         self.daemon_flag = daemon_flag
         if self.daemon_flag :
@@ -340,6 +343,15 @@ class InputPad( QtGui.QWidget ) :
                 index = index + 1
         elif self.mode == self.MODE_ROLLER :
             self.textedit.set_preedit( self.roller.get() )
+        elif self.mode == self.MODE_FILTER :
+            index = 1
+            pinyin_index = self.pinyin_index
+            while pinyin_index < len( self.pinyin_list ) and index < 7 :
+                self.key_label_list[index].setFont( self.FONT_NORMAL )
+                self.key_label_list[index].setText( self.pinyin_list[pinyin_index] )
+                update_stamp[index] = True
+                index = index + 1
+                pinyin_index = pinyin_index + 1
         for i in range( len( self.KEY_MAP ) ) :
             if not update_stamp[i] :
                 self.key_label_list[i].setText( self.KEY_TEXT[i][self.mode] )
@@ -366,7 +378,8 @@ class InputPad( QtGui.QWidget ) :
             self.key_list[self.KEYCODE_NAVIGATE].setDown( True )
         elif mode == self.MODE_ROLLER :
             self.key_list[self.KEYCODE_MODE].setDown( True )
-            
+        elif mode == self.MODE_FILTER :
+            pass
     @QtCore.Slot( int )
     def slot_key_click( self, code ) :
         if self.mode == self.MODE_NORMAL :
@@ -425,6 +438,12 @@ class InputPad( QtGui.QWidget ) :
                 self.backend.gen_cand_list()
                 if c == "" :
                     self.set_mode( self.MODE_NORMAL )
+                self.context_update()
+            elif code == 8 :
+                self.pinyin_list = self.backend.get_pinyin_list()
+                self.pinyin_list.reverse()
+                self.pinyin_index = 0
+                self.set_mode( self.MODE_FILTER )
                 self.context_update()
             elif code == 7 :
                 self.backend.page_prev()
@@ -487,6 +506,27 @@ class InputPad( QtGui.QWidget ) :
                 if self.roller.code > 0 :
                     self.roller.stop()
                 self.set_mode( self.MODE_NORMAL )
+                self.context_update()
+        elif self.mode == self.MODE_FILTER :
+            if code >= 1 and code <= 6 :
+                pinyin_index = self.pinyin_index + code - 1
+                if pinyin_index < ( self.pinyin_list ) :
+                    self.backend.set_filter( self.pinyin_list[pinyin_index] )
+                    self.backend.gen_cand_list()
+                    self.set_mode( self.MODE_SELECT )
+                    self.context_update()
+            elif code == 8 :
+                self.backend.set_filter( "" )
+                self.backend.gen_cand_list()
+                self.set_mode( self.MODE_SELECT )
+                self.context_update()
+            elif code == 7 :
+                if self.pinyin_index > 0 :
+                    self.pinyin_index = self.pinyin_index - 6
+                self.context_update()
+            elif code == 9 :
+                if ( self.pinyin_index + 6 ) < len( self.pinyin_list ) :
+                    self.pinyin_index = self.pinyin_index + 6
                 self.context_update()
 
     @QtCore.Slot( int )

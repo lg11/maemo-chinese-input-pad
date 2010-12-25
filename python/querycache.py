@@ -37,6 +37,13 @@ class Query() :
         hanzi = self.cache[index][1][1][phrase_index][0]
         freq = self.cache[index][1][1][phrase_index][1]
         return code, pinyin, hanzi, freq
+    def set_filter( self, pinyin ) :
+        if self.vaild_flag :
+            #pinyin_list = self.get_pinyin_list()
+            self.cand = []
+            for i in range( len( self.index_list ) ) :
+                self.index_list[i] = 0
+            self.filter = pinyin
     def __get_highest_freq_phrase( self ) :
         """
         select phrase has highest_freq in cache
@@ -88,6 +95,11 @@ class Query() :
             else :
                 flag = False
         return cand_length
+    def get_pinyin_list( self ) : 
+        pinyin_list = []
+        for cache in self.cache :
+            pinyin_list.append( cache[1][0] )
+        return pinyin_list
     def vaild( self ) :
         """
         return is the cache vaild
@@ -111,6 +123,41 @@ class QueryCache() :
         self.cache_cand_index = 0
         self.cand = []
         self.filter = ""
+        self.filter_index = -1
+    def set_filter( self, pinyin ) :
+        if pinyin == "" :
+            if self.filter_index >= 0 :
+                self.cache[self.filter_index].set_filter( None )
+                self.cache_index = len( self.cache ) - 1
+                self.cache_cand_index = 0
+                self.cand = []
+                self.filter = pinyin
+                self.filter_index = -1
+        else :
+            if pinyin == self.filter :
+                pass
+            else :
+                flag = False
+                cache_index = 0
+                while not flag :
+                    while cache_index < len( self.cache ) and not flag :
+                        cache = self.cache[cache_index] 
+                        pinyin_list = cache.get_pinyin_list()
+                        index = 0
+                        while index < len( pinyin_list ) and not flag :
+                            if pinyin_list[index] == pinyin :
+                                flag = True
+                            else :
+                                index = index + 1
+                        if not flag :
+                            cache_index = cache_index + 1
+                if flag :
+                    self.filter_index = cache_index
+                    self.cache[self.filter_index].set_filter( pinyin )
+                    self.cache_index = len( self.cache ) - 1
+                    self.cache_cand_index = 0
+                    self.cand = []
+                    self.filter = pinyin
     def append( self, code ) :
         """
         append a code
@@ -209,8 +256,25 @@ class QueryCache() :
                             flag = True
                 else :
                     #gen cand list with filter
-                    pass
+                    cache = self.cache[self.filter_index]
+                    cand_length = len( cache.cand )
+                    if cand_length < request_length :
+                        cache.gen_cand( request_length )
+                        new_cand_length = len( cache.cand )
+                        for i in range( cand_length, new_cand_length ) :
+                            #print i
+                            self.cand.append( [ self.filter_index, i ] )
+                        cand_length = new_cand_length
         return cand_length
+    def get_pinyin_list( self ) :
+        pinyin_list = []
+        for cache in self.cache :
+            if cache.completed() :
+                pinyin_list.extend( cache.get_pinyin_list() )
+        if len( pinyin_list ) <= 0 : 
+            for cache in self.cache :
+                pinyin_list.extend( cache.get_pinyin_list() )
+        return pinyin_list
     def select( self, cand_index ) :
         remained_code = ""
         cache_index = self.cand[cand_index][0]

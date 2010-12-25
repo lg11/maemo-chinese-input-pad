@@ -61,6 +61,10 @@ class Backend() :
         self.page_index = 0
         self.cand_list = []
         self.selected = SelectedStack()
+        self.get_pinyin_list = self.cache.get_pinyin_list
+    def set_filter( self, pinyin ) :
+        self.page_index = 0
+        self.cache.set_filter( pinyin )
     def set_code( self, code ) :
         vaild_code = self.cache.set( code )
         self.invailed_code = code[ len( vaild_code ) : ]
@@ -85,12 +89,13 @@ class Backend() :
         start_index = self.page_index * self.CAND_LENGTH
         request_length = start_index + self.CAND_LENGTH
         cand_length = self.cache.gen_cand( request_length )
+        #print self.code(), "cand_length", cand_length
         self.cand_list = []
         if request_length < cand_length :
             cand_length = request_length
         if start_index < cand_length :
             for index in range( start_index, cand_length ) :
-                #print index
+                #print self.code(), "index", index
                 code, pinyin, hanzi, freq = self.cache.get_prop( index )
                 self.cand_list.append( [ code, pinyin, hanzi.decode( "utf-8" ) ] )
     def commit( self ) :
