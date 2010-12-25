@@ -9,7 +9,7 @@ class Query() :
     """
     def __init__( self, code_map, code ) :
         """
-        init with a seek
+        init with a seek.
         """
         self.vaild_flag = False
         #self.completed_flag = False
