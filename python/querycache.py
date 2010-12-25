@@ -19,7 +19,7 @@ class Query() :
                 self.vaild_flag = True
                 self.completed_flag = flag
                 self.cand = []
-                self.filter = None
+                self.filter_index = -1
                 self.cache = []
                 self.index_list = []
                 for item in result :
@@ -39,11 +39,17 @@ class Query() :
         return code, pinyin, hanzi, freq
     def set_filter( self, pinyin ) :
         if self.vaild_flag :
-            #pinyin_list = self.get_pinyin_list()
             self.cand = []
             for i in range( len( self.index_list ) ) :
                 self.index_list[i] = 0
-            self.filter = pinyin
+                if self.cache[i][1][0] == pinyin :
+                    self.filter_index = i
+    def unset_filter( self ) :
+        if self.vaild_flag :
+            self.cand = []
+            for i in range( len( self.index_list ) ) :
+                self.index_list[i] = 0
+            self.filter_index = -1
     def __get_highest_freq_phrase( self ) :
         """
         select phrase has highest_freq in cache
@@ -65,14 +71,9 @@ class Query() :
             if phrase_index < len( phrase_list ) :
                 phrase = phrase_list[phrase_index]
                 freq = phrase[1]
-                if self.filter :
-                    if pinyin == self.filter :
-                        highest_freq = freq
-                        highest_index = cache_index
-                elif freq > highest_freq :
+                if freq > highest_freq :
                     highest_freq = freq
                     highest_index = cache_index
-                    #print highest_index
         result = None
         if highest_index >= 0 :
             phrase_index = self.index_list[highest_index]
@@ -87,7 +88,14 @@ class Query() :
         cand_length = len( self.cand )
         flag = True
         while cand_length < request_length and flag :
-            result = self.__get_highest_freq_phrase()
+            if self.filter_index >= 0 :
+                phrase_list = self.cache[self.filter_index][1][1]
+                if cand_length < len( phrase_list ) :
+                    result = [ self.filter_index, cand_length ]
+                else :
+                    result = None
+            else :
+                result = self.__get_highest_freq_phrase()
             #print result
             if result :
                 self.cand.append( result )
@@ -225,7 +233,7 @@ class QueryCache() :
         if len( self.cache ) > 0 :
             cand_length = len( self.cand )
             if cand_length < request_length :
-                if self.filter == "" :
+                if self.filter_index < 0 :
                     #gen cand list without filter
                     cache_index = self.cache_index
                     flag = False
