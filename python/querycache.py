@@ -204,6 +204,7 @@ class QueryCache() :
         self.cache_cand_index = 0
         self.cand = []
         self.filter = ""
+        self.filter_index = -1
     def set( self, code ) :
         """
         set code
@@ -264,6 +265,7 @@ class QueryCache() :
                             flag = True
                 else :
                     #gen cand list with filter
+                    #print self.filter_index, len( self.cache )
                     cache = self.cache[self.filter_index]
                     cand_length = len( cache.cand )
                     if cand_length < request_length :
