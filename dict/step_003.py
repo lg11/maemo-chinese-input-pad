@@ -6,7 +6,7 @@ import dbhash
 import time
 
 import sys
-sys.path.append( '../' )
+sys.path.append( '../python' )
 
 from codemap import CodeMap, get_data, set_data
 
