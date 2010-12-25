@@ -1,3 +1,0 @@
-[D-BUS Service]
-Name = me.maemo_chinese_input_pad
-Exec = /usr/share/maemo-chinese-input-pad/run.sh
