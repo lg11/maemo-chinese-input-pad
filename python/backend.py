@@ -53,8 +53,8 @@ load_code_map = __load_code_map
 
 class Backend() :
     CAND_LENGTH = 6
-    CODE_MAP_FILE_PATH = "/opt/mcip/dict/dict.0"
-    #CODE_MAP_FILE_PATH = "../dict/dict.0"
+    #CODE_MAP_FILE_PATH = "/opt/mcip/dict/dict.0"
+    CODE_MAP_FILE_PATH = "../dict/dict.0"
     def __init__( self ) :
         code_map = load_code_map( self.CODE_MAP_FILE_PATH )
         self.cache = QueryCache( code_map )
