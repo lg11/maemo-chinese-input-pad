@@ -186,6 +186,9 @@ class InputPad( QtGui.QWidget ) :
         self.text_palette = self.palette()
         self.text_palette.setColor( QtGui.QPalette.Text, self.sub_palette.windowText().color() )
         self.text_palette.setColor( QtGui.QPalette.Base, self.sub_palette.window().color() )
+        self.text_palette.setColor( QtGui.QPalette.Base, self.sub_palette.window().color() )
+        self.text_palette.setColor( QtGui.QPalette.Base, QtGui.QColor( 0, 0, 0, 0 ) )
+        self.text_palette.setColor( QtGui.QPalette.Background, QtGui.QColor( 0, 0, 0, 0 ) )
 
         self.rotater = Rotater()
 
@@ -200,6 +203,7 @@ class InputPad( QtGui.QWidget ) :
         self.textedit.setFixedHeight( self.TEXTEDIT_HEIGHT )
         self.textedit.clicked.connect( self.slot_key_click )
         self.textedit.longpressed.connect( self.slot_key_longpress )
+        self.textedit.setAttribute( QtCore.Qt.WA_TranslucentBackground, True )
         self.layout.addWidget( self.textedit )
         
         self.stack = QtGui.QStackedLayout()

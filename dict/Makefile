@@ -1,9 +1,6 @@
 
 all : dict.0
 
-clean :
-	rm -rf cache
-
 cache/stamp :
 	mkdir cache
 	touch cache/stamp
@@ -25,3 +22,6 @@ dict.0 : cache/db step_003.py
 	#echo "step 03 : dump raw date to marshal code_map"
 	python step_003.py >> cache/log
 
+clean :
+	rm -rf cache
+	rm dict.0
