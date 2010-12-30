@@ -16,7 +16,7 @@ install :
 	cp plugin/recover.sh /opt/mcip/plugin 
 	cp plugin/me.maemo.chinese.inputpad.service /opt/mcip/plugin
 	ln -s /opt/mcip/plugin/inputpad_plugin.so /usr/lib/hildon-input-method/
-	ln -s /opt/mcip/plugin/me.maemo.chinese.inputpad.services /usr/share/dbus-1/services/
+	ln -s /opt/mcip/plugin/me.maemo.chinese.inputpad.service /usr/share/dbus-1/services/
 	cp dict/dict.0 /opt/mcip/dict
 	cp python/*.py /opt/mcip/python
 	cp python/*.pyo /opt/mcip/python

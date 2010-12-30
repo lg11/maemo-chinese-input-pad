@@ -28,6 +28,8 @@ class Key( QtGui.QPushButton ) :
         self.timer.stop()
         self.longpressed.emit( self.keycode )
 
+NumPadKey = Key
+
 class TextEditKey( QtGui.QTextEdit ) :
     longpressed = QtCore.Signal( int )
     clicked = QtCore.Signal( int )
@@ -174,7 +176,6 @@ class m_key( QtGui.QPushButton ) :
         #self.down = icon
         #self.null = QtGui.QIcon()
 
-NumPadKey = Key
 #class NumPadKey( Key ) :
     #def __init__( self, keycode, parent ) :
         #Key.__init__( self, keycode, parent )
