@@ -37,6 +37,7 @@ class TextEditKey( QtGui.QTextEdit ) :
     DEFAULT_AUTO_REPEAT_INTERVAL = 65
     def __init__( self, keycode, parent = None ) :
         QtGui.QTextEdit.__init__( self, parent )
+        self.setAttribute( QtCore.Qt.WA_InputMethodEnabled, False )
         self.keycode = keycode
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect( self.timeout )

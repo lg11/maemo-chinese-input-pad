@@ -15,16 +15,15 @@ from backend import Backend
 class NumPad( QtGui.QWidget ) :
     commit = QtCore.Signal( str )
     commit_preedit = QtCore.Signal( str )
-    external_clicked = QtCore.Signal( int )
-    external_longpressed = QtCore.Signal( int )
+    external_request = QtCore.Signal( bool )
     KEY_TEXT = [ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" ]
-    KEY_SUB = [ "", "", "abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz" ]
+    KEY_SUB = [ "undefined", "sym", "abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz" ]
     PUNC_MAP = [ \
-            [ " ", "\n", "，", "。", "？", "……", "～", "！", ] \
+            [ " ", "\n", u"，", u"。", u"？", u"……", u"～", u"！", ] \
             , \
-            [ "、", "；", "：", "“", "”", "——", "（", "）", ] \
+            [ u"、", u"；", u"：", u"“", u"”", u"——", u"（", u"）", ] \
             , \
-            [ "@", "&", "_", "《", "》", "%", "‘", "’", ] \
+            [ "@", "&", "_", u"《", u"》", u"%", u"‘", u"’", ] \
             , \
             [ "*", "#", "\\", "+", "-", "=", "*", "/", ] \
             , \
@@ -148,7 +147,7 @@ class NumPad( QtGui.QWidget ) :
             if not self.update_stamp[i] :
                 self.key_label_list[i].setText( self.KEY_TEXT[i] )
     def __reset_mode_setting( self ) :
-        pass
+        self.external_request.emit( False )
     def set_mode( self, mode ) :
         self.__reset_mode_setting()
         self.mode = mode
@@ -160,6 +159,7 @@ class NumPad( QtGui.QWidget ) :
         elif mode == self.MODE_FILTER :
             pass
         elif mode == self.MODE_PUNC :
+            self.external_request.emit( True )
             self.punc_index = 0
     @QtCore.Slot( int )
     def slot_key_click( self, code ) :
@@ -210,59 +210,6 @@ class NumPad( QtGui.QWidget ) :
                 self.backend.page_next()
                 self.backend.gen_cand_list()
                 self.context_update()
-        elif self.mode == self.MODE_PUNC :
-            if code >= 2 and code <= 9 :
-                index = code - 2
-                punc_list = self.PUNC_MAP[self.punc_index]
-                self.commit.emit( punc_list[index] )
-                self.set_mode( self.MODE_NORMAL )
-                self.context_update()
-            elif code == self.KEYCODE_BACKSPACE :
-                self.set_mode( self.MODE_NORMAL )
-                self.context_update()
-            elif code == 1 :
-                self.punc_index = self.punc_index + 1
-                if self.punc_index < len( self.PUNC_MAP ) :
-                    pass
-                else :
-                    self.punc_index = 0
-                self.context_update()
-        elif self.mode == self.MODE_NAVIGATE :
-            if code == self.KEYCODE_NAVIGATE :
-                self.set_mode( self.MODE_NORMAL )
-                self.context_update()
-            elif code == 5 :
-                self.set_mode( self.MODE_NORMAL )
-                self.context_update()
-            elif code == 2 :
-                self.textedit.moveCursor( QtGui.QTextCursor.Up )
-            elif code == 8 :
-                self.textedit.moveCursor( QtGui.QTextCursor.Down )
-            elif code == 4 :
-                self.textedit.moveCursor( QtGui.QTextCursor.Left )
-            elif code == 6 :
-                self.textedit.moveCursor( QtGui.QTextCursor.Right )
-            elif code == self.KEYCODE_BACKSPACE :
-                self.textedit.textCursor().deletePreviousChar()
-                self.textedit.ensureCursorVisible()
-        elif self.mode == self.MODE_ROLLER :
-            if code >= 0 and code <= 9 :
-                self.roller.roll( code )
-                self.context_update()
-            #elif code == 1 :
-                #self.roller.stop()
-            elif code == self.KEYCODE_BACKSPACE :
-                if self.roller.code > 0 :
-                    self.roller.cancel()
-                else :
-                    self.textedit.textCursor().deletePreviousChar()
-                    self.textedit.ensureCursorVisible()
-                self.context_update()
-            elif code == self.KEYCODE_MODE :
-                if self.roller.code > 0 :
-                    self.roller.stop()
-                self.set_mode( self.MODE_NORMAL )
-                self.context_update()
         elif self.mode == self.MODE_FILTER :
             if code >= 1 and code <= 6 :
                 pinyin_index = self.pinyin_index + code - 1
@@ -284,45 +231,41 @@ class NumPad( QtGui.QWidget ) :
                 if ( self.pinyin_index + 6 ) < len( self.pinyin_list ) :
                     self.pinyin_index = self.pinyin_index + 6
                 self.context_update()
-
+        elif self.mode == self.MODE_PUNC :
+            if code >= 2 and code <= 9 :
+                index = code - 2
+                punc_list = self.PUNC_MAP[self.punc_index]
+                self.commit.emit( punc_list[index] )
+                self.set_mode( self.MODE_NORMAL )
+                self.context_update()
+            elif code == self.KEYCODE_BACKSPACE :
+                self.set_mode( self.MODE_NORMAL )
+                self.context_update()
+            elif code == 1 :
+                self.punc_index = self.punc_index + 1
+                if self.punc_index < len( self.PUNC_MAP ) :
+                    pass
+                else :
+                    self.set_mode( self.MODE_NORMAL )
+                    self.punc_index = 0
+                self.context_update()
     @QtCore.Slot( int )
     def slot_key_longpress( self, code ) :
         if self.mode == self.MODE_NORMAL :
             if code >= 0 and code <= 9 :
                 self.textedit.textCursor().insertText( str( code ), self.textedit.normal_format )
                 self.textedit.ensureCursorVisible()
-        elif self.mode == self.MODE_ROLLER :
-            if code >= 0 and code <= 9 :
-                if self.roller.code > 0 :
-                    self.roller.stop()
-                self.textedit.textCursor().insertText( str( code ), self.textedit.normal_format )
-                self.textedit.ensureCursorVisible()
         pass
-    def closeEvent( self, event ) :
-        if self.daemon_flag :
-            #self.setAttribute( QtCore.Qt.WA_Maemo5PortraitOrientation, True )
-            self.hide()
-            event.ignore()
-            if not self.portrait :
-                self.rotater.resize( 1, 1 )
-                self.rotater.show()
-            self.textedit.set_preedit( "" )
-            self.set_mode( self.MODE_NORMAL )
-            text = self.textedit.toPlainText()
-            self.request_commit.emit( text )
-        else :
-            event.accept()
-        #self.backend.backend.save()
-
-#class Pad( QtGui.QWidget ) :
-    #def __init__( self, daemon_flag = False, parent = None ) :
-
 
 if __name__ == "__main__" :
     import sys
+    def p( text ) :
+        print text.toUtf8()
     app = QtGui.QApplication( sys.argv )
 
     pad = NumPad()
+    pad.commit.connect( p )
+    pad.commit_preedit.connect( p )
     pad.show()
     sys.exit( app.exec_() )
 
