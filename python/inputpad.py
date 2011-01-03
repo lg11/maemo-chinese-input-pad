@@ -178,7 +178,7 @@ class InputPad( QtGui.QWidget ) :
                 self.rotater.resize( 1, 1 )
                 self.rotater.show()
             self.textedit.commit_preedit( "" )
-            self.keypad_list[0].set_mode( self.MODE_NORMAL )
+            self.keypad_list[0].set_mode( self.keypad_list[0].MODE_NORMAL )
             self.keypad_list[0].backend.set_code( "" )
             text = self.textedit.toPlainText()
             self.request_commit.emit( text )
