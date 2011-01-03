@@ -94,9 +94,9 @@ class TextEdit( QtGui.QTextEdit ) :
                 self.clicked.emit( self.keycode )
             else :
                 width = self.width()
-                if x - self.start_x > width / 3 :
+                if x - self.start_x > width / 5 :
                     self.__move_end()
-                elif self.start_x - x > width / 3 :
+                elif self.start_x - x > width / 5 :
                     self.__move_start()
                 elif self.start_x < self.width() / 2 :
                     self.moveCursor( QtGui.QTextCursor.Left )
