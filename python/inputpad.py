@@ -111,7 +111,12 @@ class InputPad( QtGui.QWidget ) :
         self.textedit.setFixedHeight( self.TEXTEDIT_HEIGHT )
         #self.textedit.longpressed.connect( self.slot_key_longpress )
         self.textedit.setAttribute( QtCore.Qt.WA_TranslucentBackground, True )
-        self.layout.addWidget( self.textedit )
+        #self.layout.addWidget( self.textedit )
+        layout = QtGui.QHBoxLayout()
+        layout.addWidget( QtGui.QLabel( self ) )
+        layout.addWidget( self.textedit )
+        layout.addWidget( QtGui.QLabel( self ) )
+        self.layout.addLayout( layout )
         
         self.stack = QtGui.QStackedLayout()
         self.layout.addLayout( self.stack )
@@ -126,8 +131,15 @@ class InputPad( QtGui.QWidget ) :
         keypad.external_request.connect( self.textedit.accept_request )
         for key in keypad.key_list :
             key.setFocusProxy( self.textedit )
-
         self.stack.addWidget( keypad )
+        #widget = QtGui.QWidget( self )
+        #widget.setFixedHeight( self.NUMPAD_HEIGHT )
+        #layout = QtGui.QVBoxLayout()
+        #layout.setSpacing( 0 )
+        #layout.setContentsMargins( 0, 0, 0, 0 )
+        #layout.addWidget( keypad )
+        #widget.setLayout( layout )
+        #self.stack.addWidget( widget )
 
         #self.layout.addStretch()
         self.tab = QtGui.QTabBar( self )

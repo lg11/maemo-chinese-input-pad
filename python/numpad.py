@@ -253,9 +253,7 @@ class NumPad( QtGui.QWidget ) :
     def slot_key_longpress( self, code ) :
         if self.mode == self.MODE_NORMAL :
             if code >= 0 and code <= 9 :
-                self.textedit.textCursor().insertText( str( code ), self.textedit.normal_format )
-                self.textedit.ensureCursorVisible()
-        pass
+                self.commit.emit( str( code ) )
 
 if __name__ == "__main__" :
     import sys
