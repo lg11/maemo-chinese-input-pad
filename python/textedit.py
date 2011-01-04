@@ -81,14 +81,6 @@ class TextEdit( QtGui.QTextEdit ) :
             cursor.deleteChar()
         else :
             cursor.deletePreviousChar()
-    def mouseDoubleClickEvent( self, event ) :
-        self.mousePressEvent( event )
-    def mousePressEvent( self, event ) :
-        self.auto_repeat_timer.stop()
-        self.start_pos = event.pos()
-        self.start_cursor = self.textCursor()
-        self.move_flag = False
-        self.timer.start( self.longpress_interval )
     def mouseMoveEvent( self, event ) :
         if len( self.preedit ) > 0 or self.external_flag :
             pass
@@ -116,6 +108,14 @@ class TextEdit( QtGui.QTextEdit ) :
                 #print d
                 if d > 1024 :
                     self.move_flag = True
+    def mouseDoubleClickEvent( self, event ) :
+        self.mousePressEvent( event )
+    def mousePressEvent( self, event ) :
+        self.auto_repeat_timer.stop()
+        self.start_pos = event.pos()
+        self.start_cursor = self.textCursor()
+        self.move_flag = False
+        self.timer.start( self.longpress_interval )
     def mouseReleaseEvent( self, event ) :
         self.auto_repeat_timer.stop()
         if self.timer.isActive() :
@@ -124,13 +124,13 @@ class TextEdit( QtGui.QTextEdit ) :
             if len( self.preedit ) > 0 or self.external_flag :
                 self.clicked.emit( self.keycode )
             else :
-                width = self.width()
-                if x - self.start_pos.x() > width / 10 :
-                    self.setTextCursor( self.start_cursor )
-                    self.__move_end()
-                elif self.start_pos.x() - x > width / 10 :
-                    self.setTextCursor( self.start_cursor )
-                    self.__move_start()
+                if self.move_flag :
+                    if x  > self.start_pos.x() :
+                        self.setTextCursor( self.start_cursor )
+                        self.__move_end()
+                    else :
+                        self.setTextCursor( self.start_cursor )
+                        self.__move_start()
                 else :
                     self.__delete()
             self.ensureCursorVisible()
