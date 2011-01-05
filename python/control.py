@@ -21,6 +21,9 @@ class Control( QtGui.QWidget ) :
         self.check_timer.timeout.connect( self.check_timeout )
         self.command_timer = QtCore.QTimer()
         self.command_timer.timeout.connect( self.command_timeout )
+        self.time = QtCore.QTime()
+        self.time.start()
+        self.stack = []
     def eventFilter( self, target, event ) :
         if event.type() == QtCore.QEvent.MouseButtonPress :
             self.mousePressEvent( event )
@@ -38,6 +41,9 @@ class Control( QtGui.QWidget ) :
         self.timer.start( 350 )
         self.check_timer.start( 120 )
         self.command_timer.start( 250 )
+        self.time.restart()
+        self.stack = []
+        #self.stack.append( ( event.pos(), self.time.elapsed() ) )
     def mouseReleaseEvent( self, event ) :
         #print "release"
         self.check_timer.stop()
@@ -52,15 +58,35 @@ class Control( QtGui.QWidget ) :
                 if d > 1024 * 3.0 :
                     self.take.emit()
                     self.command.emit( dx, dy )
+        else :
+            if self.check() :
+                if len( self.stack ) > 0 :
+                    i = len( self.stack ) - 1
+                    time = self.time.elapsed()
+                    while i > 0 :
+                        old_time = self.stack[i][1]
+                        #print i, time - old_time, self.stack[i]
+                        if time - old_time > 100 :
+                            break
+                        else :
+                            i = i - 1
+                    #print i
+                    pos = self.stack[i][0]
+                    dx = pos.x() - self.start.x()
+                    dy = pos.y() - self.start.y()
+                    self.move.emit( dx, dy )
+
     def __check( self ) :
         return True
     def mouseMoveEvent( self, event ) :
         if self.check() :
             pos = event.globalPos()
             if self.flag :
+                #print self.time.elapsed()
                 dx = pos.x() - self.start.x()
                 dy = pos.y() - self.start.y()
                 self.move.emit( dx, dy )
+                self.stack.append( ( pos, self.time.elapsed() ) )
             else :
                 if self.timer.isActive() :
                     dx = pos.x() - self.origin.x()
@@ -72,11 +98,13 @@ class Control( QtGui.QWidget ) :
                             #print "move", dx, dy
                             self.take.emit()
                             self.flag = True
+                            self.stack.append( ( pos, self.time.elapsed() ) )
                     elif d > 1024 * 2.5 :
                         self.start = self.origin
                         #print "move", dx, dy
                         self.take.emit()
                         self.flag = True
+                        self.stack.append( ( pos, self.time.elapsed() ) )
     def timeout( self ) :
         self.timer.stop()
     def check_timeout( self ) :

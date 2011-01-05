@@ -79,7 +79,7 @@ class CharRoller( QtCore.QObject ) :
 class InputPad( Control ) :
     request_commit = QtCore.Signal( str )
     NUMPAD_HEIGHT = 440
-    PAD_HEIGHT = 720
+    PAD_HEIGHT = 700
     TEXTEDIT_HEIGHT = 140
     LAYOUT_SPACING = 0
     def __init__( self, daemon_flag = False, parent = None ) :
@@ -94,10 +94,7 @@ class InputPad( Control ) :
         self.sub_palette.setColor( QtGui.QPalette.ButtonText, self.sub_palette.mid().color() )
         self.text_palette = self.palette()
         self.text_palette.setColor( QtGui.QPalette.Text, self.sub_palette.windowText().color() )
-        self.text_palette.setColor( QtGui.QPalette.Base, self.sub_palette.window().color() )
-        self.text_palette.setColor( QtGui.QPalette.Base, self.sub_palette.window().color() )
-        self.text_palette.setColor( QtGui.QPalette.Base, QtGui.QColor( 0, 0, 0, 0 ) )
-        self.text_palette.setColor( QtGui.QPalette.Background, QtGui.QColor( 0, 0, 0, 0 ) )
+        #self.text_palette.setColor( QtGui.QPalette.Base, self.sub_palette.window().color() )
 
         self.rotater = Rotater()
 
@@ -107,17 +104,16 @@ class InputPad( Control ) :
         self.setLayout( self.layout )
 
         self.textedit = TextEdit( NumPad.KEYCODE_BACKSPACE, self )
-        #self.textedit.setStyleSheet( "QTextEdit { border-width : 0px ; padding : 0px }" )
-        #self.textedit.setPalette( self.text_palette )
+        self.textedit.setStyleSheet( "QTextEdit { border-width : 0px ; padding : 0px }" )
+        self.textedit.setPalette( self.text_palette )
         self.textedit.setFixedHeight( self.TEXTEDIT_HEIGHT )
         self.textedit.setAttribute( QtCore.Qt.WA_TranslucentBackground, True )
         self.take.connect( self.textedit.stop )
-        self.layout.addWidget( self.textedit )
-        #layout = QtGui.QHBoxLayout()
-        #layout.addWidget( QtGui.QLabel( self ) )
-        #layout.addWidget( self.textedit )
-        #layout.addWidget( QtGui.QLabel( self ) )
-        #self.layout.addLayout( layout )
+        #self.layout.addWidget( self.textedit )
+        layout = QtGui.QGridLayout()
+        layout.setContentsMargins( 24, 8, 24, 0 )
+        layout.addWidget( self.textedit, 0, 0 )
+        self.layout.addLayout( layout )
         
         self.stack = QtGui.QStackedLayout()
         self.layout.addLayout( self.stack )
@@ -132,7 +128,14 @@ class InputPad( Control ) :
         for key in keypad.key_list :
             key.setFocusProxy( self.textedit )
             self.take.connect( key.stop )
-        self.stack.addWidget( keypad )
+        #self.stack.addWidget( keypad )
+        widget = QtGui.QWidget( self )
+        layout = QtGui.QVBoxLayout()
+        layout.setContentsMargins( 6, 0, 6, 0 )
+        layout.addWidget( keypad )
+        layout.addStretch()
+        widget.setLayout( layout )
+        self.stack.addWidget( widget )
 
         #self.layout.addStretch()
         self.tab = QtGui.QTabBar( self )

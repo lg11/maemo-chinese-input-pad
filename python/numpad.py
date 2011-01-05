@@ -15,8 +15,8 @@ from backend import Backend
 class NumPad( QtGui.QWidget ) :
     commit = QtCore.Signal( str )
     commit_preedit = QtCore.Signal( str )
-    KEY_TEXT = [ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" ]
-    KEY_SUB = [ "undefined", "sym", "abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz" ]
+    KEY_TEXT = [ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "", "" ]
+    KEY_SUB = [ "undefined", "sym", "abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz", "mode", "undefined" ]
     PUNC_MAP = [ \
             [ " ", "\n", u"，", u"。", u"？", u"……", u"～", u"！", ] \
             , \
@@ -40,7 +40,7 @@ class NumPad( QtGui.QWidget ) :
     FONT_LAGER = QtGui.QFont()
     FONT_LAGER.setPointSize( FONT_LAGER.pointSize() + 17 )
     FONT_LAGER.setBold( True )
-    KEYCODE_BACKSPACE = 11
+    KEYCODE_BACKSPACE = 21
     def __init__( self, parent = None ) :
         QtGui.QWidget.__init__( self, parent )
 
@@ -49,7 +49,7 @@ class NumPad( QtGui.QWidget ) :
 
         self.key_list = []
         self.key_label_list = []
-        for keycode in range( 10 ) :
+        for keycode in range( 12 ) :
             key = Key( keycode, self )
             #key.setText( self.KEY_TEXT[keycode][0] )
             self.key_list.append( key )
@@ -84,9 +84,10 @@ class NumPad( QtGui.QWidget ) :
         self.pinyin_index = 0
         self.punc_index = 0
         self.update_stamp = []
-        for i in range( 10 ) :
+        for i in range( 12 ) :
             self.update_stamp.append( False )
-    def resizeEvent( self, event ) :
+        self.__remap()
+    def __remap( self ) :
         key_width = self.width() / 3
         key_height = self.height() / 4
 
@@ -100,12 +101,25 @@ class NumPad( QtGui.QWidget ) :
                 key.move( x, y )
                 x = x + key_width
             y = y + key_height
-        x = key_width
+        
+        x = 0
+        key = self.key_list[10]
+        key.resize( key_width, key_height )
+        key.move( x, y )
+
+        x = x + key_width
         key = self.key_list[0]
         key.resize( key_width, key_height )
         key.move( x, y )
+
+        x = x + key_width
+        key = self.key_list[11]
+        key.resize( key_width, key_height )
+        key.move( x, y )
+    def resizeEvent( self, event ) :
+        self.__remap()
     def context_update( self ) :
-        for i in range( 10 ) :
+        for i in range( 12 ) :
             self.key_label_list[i].setFont( self.FONT_LAGER )
             self.update_stamp[i] = False
         if self.mode == self.MODE_NORMAL :
@@ -142,7 +156,7 @@ class NumPad( QtGui.QWidget ) :
                 self.key_label_list[index].setText( punc )
                 self.update_stamp[index] = True
                 index = index + 1
-        for i in range( 10 ) :
+        for i in range( 12 ) :
             if not self.update_stamp[i] :
                 self.key_label_list[i].setText( self.KEY_TEXT[i] )
     def __reset_mode_setting( self ) :

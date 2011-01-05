@@ -12,6 +12,7 @@ class TextEdit( QtGui.QTextEdit ) :
     def __init__( self, keycode, parent = None ) :
         QtGui.QTextEdit.__init__( self, parent )
         self.setAttribute( QtCore.Qt.WA_InputMethodEnabled, False )
+        #self.setCursorWidth( 5 )
         self.keycode = keycode
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect( self.timeout )
@@ -68,7 +69,7 @@ class TextEdit( QtGui.QTextEdit ) :
     def move( self, dx, dy ) :
         width = self.width()
         d = float( dx ) / float( width )
-        d = 9 * d
+        d = 8 * d
         new_pos = self.origin_pos.position() + d
         cursor = self.textCursor()
         if new_pos < 0 :
