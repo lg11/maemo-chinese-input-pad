@@ -8,14 +8,13 @@ QtCore.Slot = QtCore.pyqtSlot
 #import time
 
 #import rotate
-from widget import NumPadKey
+from widget import Key
 from backend import Backend
 
 
 class NumPad( QtGui.QWidget ) :
     commit = QtCore.Signal( str )
     commit_preedit = QtCore.Signal( str )
-    external_request = QtCore.Signal( bool )
     KEY_TEXT = [ "0", "1", "2", "3", "4", "5", "6", "7", "8", "9" ]
     KEY_SUB = [ "undefined", "sym", "abc", "def", "ghi", "jkl", "mno", "pqrs", "tuv", "wxyz" ]
     PUNC_MAP = [ \
@@ -51,7 +50,7 @@ class NumPad( QtGui.QWidget ) :
         self.key_list = []
         self.key_label_list = []
         for keycode in range( 10 ) :
-            key = NumPadKey( keycode, self )
+            key = Key( keycode, self )
             #key.setText( self.KEY_TEXT[keycode][0] )
             self.key_list.append( key )
             key.clicked.connect( self.slot_key_click )
@@ -147,7 +146,7 @@ class NumPad( QtGui.QWidget ) :
             if not self.update_stamp[i] :
                 self.key_label_list[i].setText( self.KEY_TEXT[i] )
     def __reset_mode_setting( self ) :
-        self.external_request.emit( False )
+        pass
     def set_mode( self, mode ) :
         self.__reset_mode_setting()
         self.mode = mode
@@ -159,7 +158,6 @@ class NumPad( QtGui.QWidget ) :
         elif mode == self.MODE_FILTER :
             pass
         elif mode == self.MODE_PUNC :
-            self.external_request.emit( True )
             self.punc_index = 0
     @QtCore.Slot( int )
     def slot_key_click( self, code ) :
@@ -253,7 +251,20 @@ class NumPad( QtGui.QWidget ) :
     def slot_key_longpress( self, code ) :
         if self.mode == self.MODE_NORMAL :
             if code >= 0 and code <= 9 :
-                self.commit.emit( str( code ) )
+                if len( self.backend.code() ) > 0 :
+                    pass
+                else :
+                    self.commit.emit( str( code ) )
+    def mousePressEvent( self, event ) :
+        pass
+    def mouseReleaseEvent( self, event ) :
+        pass
+    def mouseMoveEvent( self, event ) :
+        pass
+    def installEventFilter( self, filter ) :
+        for key in self.key_list :
+            key.installEventFilter( filter )
+        QtGui.QWidget.installEventFilter( self, filter )
 
 if __name__ == "__main__" :
     import sys

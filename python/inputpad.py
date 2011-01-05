@@ -12,6 +12,7 @@ from textedit import TextEdit
 from numpad import NumPad
 from keyboard import KeyPad, KEYPAD_MAP, KEYPAD_MAP_NAME
 from backend import Backend
+from control import Control
 
 class Rotater( QtGui.QWidget ) :
     def __init__( self, parent = None ) :
@@ -75,17 +76,17 @@ class CharRoller( QtCore.QObject ) :
             c = self.ROLLER[self.code][self.roller]
         return c
 
-class InputPad( QtGui.QWidget ) :
+class InputPad( Control ) :
     request_commit = QtCore.Signal( str )
     NUMPAD_HEIGHT = 440
-    PAD_HEIGHT = 690
+    PAD_HEIGHT = 720
     TEXTEDIT_HEIGHT = 140
     LAYOUT_SPACING = 0
     def __init__( self, daemon_flag = False, parent = None ) :
         if daemon_flag :
-            QtGui.QWidget.__init__( self, parent, QtCore.Qt.Dialog | QtCore.Qt.FramelessWindowHint )
+            Control.__init__( self, parent, QtCore.Qt.Dialog | QtCore.Qt.FramelessWindowHint )
         else :
-            QtGui.QWidget.__init__( self, parent )
+            Control.__init__( self, parent )
 
         self.setAttribute( QtCore.Qt.WA_Maemo5PortraitOrientation, True )
 
@@ -109,8 +110,8 @@ class InputPad( QtGui.QWidget ) :
         #self.textedit.setStyleSheet( "QTextEdit { border-width : 0px ; padding : 0px }" )
         #self.textedit.setPalette( self.text_palette )
         self.textedit.setFixedHeight( self.TEXTEDIT_HEIGHT )
-        #self.textedit.longpressed.connect( self.slot_key_longpress )
         self.textedit.setAttribute( QtCore.Qt.WA_TranslucentBackground, True )
+        self.take.connect( self.textedit.stop )
         self.layout.addWidget( self.textedit )
         #layout = QtGui.QHBoxLayout()
         #layout.addWidget( QtGui.QLabel( self ) )
@@ -128,18 +129,10 @@ class InputPad( QtGui.QWidget ) :
         keypad.commit.connect( self.textedit.commit )
         keypad.commit_preedit.connect( self.textedit.commit_preedit )
         self.textedit.clicked.connect( keypad.slot_key_click )
-        keypad.external_request.connect( self.textedit.accept_request )
         for key in keypad.key_list :
             key.setFocusProxy( self.textedit )
+            self.take.connect( key.stop )
         self.stack.addWidget( keypad )
-        #widget = QtGui.QWidget( self )
-        #widget.setFixedHeight( self.NUMPAD_HEIGHT )
-        #layout = QtGui.QVBoxLayout()
-        #layout.setSpacing( 0 )
-        #layout.setContentsMargins( 0, 0, 0, 0 )
-        #layout.addWidget( keypad )
-        #widget.setLayout( layout )
-        #self.stack.addWidget( widget )
 
         #self.layout.addStretch()
         self.tab = QtGui.QTabBar( self )
@@ -153,11 +146,21 @@ class InputPad( QtGui.QWidget ) :
                 for key in row :
                     if key :
                         key.setFocusProxy( self.textedit )
+                        self.take.connect( key.stop )
             self.keypad_list.append( keypad )
             self.stack.addWidget( keypad )
             self.tab.addTab( KEYPAD_MAP_NAME[i] )
 
         self.tab.currentChanged.connect( self.stack.setCurrentIndex )
+
+        self.textedit.installEventFilter( self )
+        for keypad in self.keypad_list :
+            keypad.installEventFilter( self )
+
+        self.move.connect( self.textedit.move )
+        self.command.connect( self.textedit.command )
+        self.textedit.check = self.check_mode
+        self.check = self.check_move
 
         self.daemon_flag = daemon_flag
         if self.daemon_flag :
@@ -167,6 +170,20 @@ class InputPad( QtGui.QWidget ) :
                 self.portrait = False
             else :
                 self.portrait = True
+    def check_mode( self ) :
+        flag = False
+        if len( self.textedit.preedit ) > 0 :
+            flag = True
+        elif not ( self.keypad_list[0].mode == NumPad.MODE_NORMAL ) :
+            flag = True
+        return flag
+    def check_move( self ) :
+        flag = True
+        if len( self.textedit.preedit ) > 0 :
+            flag = False
+        elif not ( self.keypad_list[0].mode == NumPad.MODE_NORMAL ) :
+            flag = False
+        return flag
     def callback_show( self, string ) :
         self.textedit.setText( string )
         self.textedit.moveCursor( QtGui.QTextCursor.End )
@@ -183,7 +200,6 @@ class InputPad( QtGui.QWidget ) :
             self.resize( 480, self.PAD_HEIGHT )
     def closeEvent( self, event ) :
         if self.daemon_flag :
-            #self.setAttribute( QtCore.Qt.WA_Maemo5PortraitOrientation, True )
             self.hide()
             event.ignore()
             if not self.portrait :
@@ -197,7 +213,6 @@ class InputPad( QtGui.QWidget ) :
         else :
             event.accept()
         #self.backend.backend.save()
-
 
 if __name__ == "__main__" :
     import sys

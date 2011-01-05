@@ -5,9 +5,7 @@ from PyQt4 import QtCore, QtGui
 QtCore.Signal = QtCore.pyqtSignal
 QtCore.Slot = QtCore.pyqtSlot
 
-
 class TextEdit( QtGui.QTextEdit ) :
-    longpressed = QtCore.Signal( int )
     clicked = QtCore.Signal( int )
     DEFAULT_LONGPRESS_INTERVAL = 350
     DEFAULT_AUTO_REPEAT_INTERVAL = 65
@@ -21,21 +19,18 @@ class TextEdit( QtGui.QTextEdit ) :
         self.preedit_start_pos = -1
         self.preedit_end_pos = -1
         self.preedit = ""
-        self.start_pos = None
-        self.start_cursor = None
-        self.external_flag = False
-        self.move_flag = False
+        self.origin_pos = self.textCursor()
 
         self.auto_repeat_timer = QtCore.QTimer()
-        self.auto_repeat_flag = True
         self.auto_repeat_interval = self.DEFAULT_AUTO_REPEAT_INTERVAL
         self.auto_repeat_timer.timeout.connect( self.auto_repeat )
+
         self.normal_format = QtGui.QTextCharFormat()
         self.preedit_format = QtGui.QTextCharFormat()
         self.preedit_format.setFontUnderline( True )
-    @QtCore.Slot( bool )
-    def accept_request( self, flag ):
-        self.external_flag = flag
+        self.check = self.__check
+    def __check( self ) :
+        return True
     def __clear_preedit( self ) :
         if not ( self.preedit_start_pos < 0 ) :
             cursor = self.textCursor()
@@ -61,6 +56,31 @@ class TextEdit( QtGui.QTextEdit ) :
     def commit( self, c ) :
         self.textCursor().insertText( c, self.normal_format )
         self.ensureCursorVisible()
+    @QtCore.Slot( int, int )
+    def command( self, dx, dy ) :
+        #if abs( dx ) > abs( dy ) :
+        self.setTextCursor( self.origin_pos )
+        if dx >= 0 :
+            self.__move_end()
+        else :
+            self.__move_start()
+    @QtCore.Slot( int, int )
+    def move( self, dx, dy ) :
+        width = self.width()
+        d = float( dx ) / float( width )
+        d = 9 * d
+        new_pos = self.origin_pos.position() + d
+        cursor = self.textCursor()
+        if new_pos < 0 :
+            new_pos = 0
+        else :
+            cursor.movePosition( QtGui.QTextCursor.End )
+            end_pos = cursor.position() 
+            if new_pos > end_pos :
+                new_pos = end_pos
+        cursor.setPosition( new_pos )
+        self.setTextCursor( cursor )
+        self.ensureCursorVisible()
     def __move_end( self ) :
         pos = self.textCursor()
         end_pos = self.textCursor()
@@ -82,65 +102,28 @@ class TextEdit( QtGui.QTextEdit ) :
         else :
             cursor.deletePreviousChar()
     def mouseMoveEvent( self, event ) :
-        if len( self.preedit ) > 0 or self.external_flag :
-            pass
-        else :
-            pos = event.pos()
-            if self.move_flag :
-                width = self.width()
-                d = pos.x() - self.start_pos.x()
-                d = int( 10 * d / width )
-                new_pos = self.start_cursor.position() + d
-                cursor = self.textCursor()
-                if new_pos < 0 :
-                    new_pos = 0
-                else :
-                    cursor.movePosition( QtGui.QTextCursor.End )
-                    end_pos = cursor.position() 
-                    if new_pos > end_pos :
-                        new_pos = end_pos
-                cursor.setPosition( new_pos )
-                self.setTextCursor( cursor )
-            else :
-                x = self.start_pos.x() - event.x()
-                y = self.start_pos.y() - event.y()
-                d = x * x + y * y
-                #print d
-                if d > 1024 :
-                    self.move_flag = True
+        pass
     def mouseDoubleClickEvent( self, event ) :
         self.mousePressEvent( event )
     def mousePressEvent( self, event ) :
+        #print "text press"
         self.auto_repeat_timer.stop()
-        self.start_pos = event.pos()
-        self.start_cursor = self.textCursor()
-        self.move_flag = False
+        self.origin_pos = self.textCursor()
         self.timer.start( self.longpress_interval )
     def mouseReleaseEvent( self, event ) :
         self.auto_repeat_timer.stop()
         if self.timer.isActive() :
             self.timer.stop()
-            x = event.pos().x()
-            if len( self.preedit ) > 0 or self.external_flag :
+            if self.check() :
                 self.clicked.emit( self.keycode )
             else :
-                if self.move_flag :
-                    if x  > self.start_pos.x() :
-                        self.setTextCursor( self.start_cursor )
-                        self.__move_end()
-                    else :
-                        self.setTextCursor( self.start_cursor )
-                        self.__move_start()
-                else :
-                    self.__delete()
+                self.__delete()
             self.ensureCursorVisible()
     @QtCore.Slot()
     def auto_repeat( self ) :
         self.auto_repeat_timer.stop()
         self.auto_repeat_timer.start( self.auto_repeat_interval )
-        if self.move_flag :
-            pass
-        elif len( self.preedit ) > 0 or self.external_flag :
+        if self.check() :
             self.clicked.emit( self.keycode )
         else :
             self.__delete()
@@ -148,16 +131,19 @@ class TextEdit( QtGui.QTextEdit ) :
     @QtCore.Slot()
     def timeout( self ) :
         self.timer.stop()
-        if self.auto_repeat_flag :
-            if self.move_flag :
-                pass
-            elif len( self.preedit ) > 0 or self.external_flag :
-                self.clicked.emit( self.keycode )
-            else :
-                self.__delete()
-            self.ensureCursorVisible()
-            self.auto_repeat_timer.start( self.auto_repeat_interval )
+        if self.check() :
+            self.clicked.emit( self.keycode )
         else :
-            self.longpressed.emit( self.keycode )
+            self.__delete()
+        self.ensureCursorVisible()
+        self.auto_repeat_timer.start( self.auto_repeat_interval )
+    def installEventFilter( self, filter ) :
+        self.viewport().installEventFilter( filter )
+        QtGui.QTextEdit.installEventFilter( self, filter )
+    @QtCore.Slot()
+    def stop( self ) :
+        self.origin_pos = self.textCursor()
+        if self.timer.isActive() :
+            self.timer.stop()
 
 

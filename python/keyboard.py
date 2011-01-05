@@ -71,6 +71,18 @@ class KeyPad( QtGui.QWidget ) :
         self.commit.emit( self.key_map[0][keycode] )
     def slot_key_longpressed( self, keycode ) :
         self.commit.emit( self.key_map[1][keycode] )
+    def mousePressEvent( self, event ) :
+        pass
+    def mouseReleaseEvent( self, event ) :
+        pass
+    def mouseMoveEvent( self, event ) :
+        pass
+    def installEventFilter( self, filter ) :
+        for key_list in self.key_list :
+            for key in key_list :
+                if key :
+                    key.installEventFilter( filter )
+        QtGui.QWidget.installEventFilter( self, filter )
 
 KEYPAD_MAP = []
 KEYPAD_MAP_NAME = [ "abc", "あ".decode( "utf-8" ), "ア".decode( "utf-8" ), "dic" ]
@@ -97,6 +109,7 @@ KEYPAD_MAP.append( [ \
         , \
         [ "", "", "", "", "", "", "", "", "", "", "", "" ] \
         ] )
+
 """
 あいうえお まみむめも
 かきくけこ はひふへほ
@@ -147,11 +160,11 @@ class Keyboard( QtGui.QWidget ) :
         self.pad_stack.move( 0, 0 )
         self.pad_stack.resize( width, height )
 
-def p( s ) :
-    print s.toUtf8()
 
 if __name__ == "__main__" :
     import sys
+    def p( s ) :
+        print s.toUtf8()
     app = QtGui.QApplication( sys.argv )
 
     kb = Keyboard()
