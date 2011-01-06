@@ -13,6 +13,7 @@ from numpad import NumPad
 from keyboard import KeyPad, KEYPAD_MAP, KEYPAD_MAP_NAME
 from backend import Backend
 from control import Control
+from post import PostPad
 
 class Rotater( QtGui.QWidget ) :
     def __init__( self, parent = None ) :
@@ -26,55 +27,6 @@ class Rotater( QtGui.QWidget ) :
         self.hide()
         event.ignore()
 
-class CharRoller( QtCore.QObject ) :
-    ROLLER = [ " @", ".,", "abcABC", "defDEF", "ghiGHI", "jklJKL", "mnoMNO", "pqrsPQRS" ,"tuvTUV", "wxyzWXYZ" ]
-    timeout_interval = 1000
-    commit = QtCore.Signal( str )
-    #timeout = QtCore.Signal()
-    def __init__( self ) :
-        QtCore.QObject.__init__( self )
-        self.timer = QtCore.QTimer()
-        self.timer.timeout.connect( self.slot_timeout )
-        self.roller = -1
-        self.code = -1
-    @QtCore.Slot()
-    def slot_timeout( self ) :
-        self.timer.stop()
-        c = self.ROLLER[self.code][self.roller]
-        self.code = -1
-        self.roller = -1
-        self.commit.emit( c )
-        #self.timeout.emit()
-    def cancel( self ) :
-        self.timer.stop()
-        self.code = -1
-        self.roller = -1
-    def stop( self ) :
-        if self.code >= 0 :
-            c = self.ROLLER[self.code][self.roller]
-            self.code = -1
-            self.roller = -1
-            self.commit.emit( c )
-        self.cancel()
-    def roll( self, code ) :
-        self.timer.stop()
-        if code == self.code :
-            if self.roller < len( self.ROLLER[code] ) - 1 :
-                self.roller = self.roller + 1
-            else :
-                self.roller = 0
-            self.timer.start( self.timeout_interval )
-        else :
-            if self.code >= 0 :
-                self.commit.emit( self.ROLLER[self.code][self.roller] )
-            self.code = code
-            self.roller = 0
-            self.timer.start( self.timeout_interval )
-    def get( self ) :
-        c = ""
-        if self.code >= 0 :
-            c = self.ROLLER[self.code][self.roller]
-        return c
 
 class InputPad( Control ) :
     request_commit = QtCore.Signal( str )
@@ -108,7 +60,7 @@ class InputPad( Control ) :
         #self.textedit.setPalette( self.text_palette )
         self.textedit.setFixedHeight( self.TEXTEDIT_HEIGHT )
         self.textedit.setAttribute( QtCore.Qt.WA_TranslucentBackground, True )
-        self.take.connect( self.textedit.stop )
+        #self.take.connect( self.textedit.stop )
         #self.layout.addWidget( self.textedit )
         layout = QtGui.QGridLayout()
         layout.setContentsMargins( 8, 0, 8, 0 )
@@ -127,7 +79,7 @@ class InputPad( Control ) :
         self.textedit.clicked.connect( keypad.slot_key_click )
         for key in keypad.key_list :
             key.setFocusProxy( self.textedit )
-            self.take.connect( key.stop )
+            #self.take.connect( key.stop )
         #self.stack.addWidget( keypad )
         widget = QtGui.QWidget( self )
         layout = QtGui.QVBoxLayout()
@@ -149,19 +101,33 @@ class InputPad( Control ) :
                 for key in row :
                     if key :
                         key.setFocusProxy( self.textedit )
-                        self.take.connect( key.stop )
+                        #self.take.connect( key.stop )
             self.keypad_list.append( keypad )
             self.stack.addWidget( keypad )
             self.tab.addTab( KEYPAD_MAP_NAME[i] )
 
-        self.tab.currentChanged.connect( self.stack.setCurrentIndex )
+        post = PostPad( self )
+        post.setFocusProxy( self.textedit )
+        post.commit.connect( self.textedit.commit )
+        post.commit.connect( self.q_commit )
+        post.set.connect( self.textedit.set )
+        post.set.connect( self.q_commit )
+        self.request_commit.connect( post.add )
+        self.keypad_list.append( post )
+        self.stack.addWidget( post )
+        self.tab.addTab( "Q" )
+        self.q = post
+
+        self.tab.currentChanged.connect( self.change )
+        self.prev_tab = 0
 
         self.textedit.installEventFilter( self )
         for keypad in self.keypad_list :
             keypad.installEventFilter( self )
 
-        self.move.connect( self.textedit.move )
-        self.command.connect( self.textedit.command )
+        self.move.connect( self.slot_move )
+        self.command.connect( self.slot_command )
+        self.take.connect( self.stop )
         self.textedit.check = self.check_mode
         self.check = self.check_move
 
@@ -173,18 +139,48 @@ class InputPad( Control ) :
                 self.portrait = False
             else :
                 self.portrait = True
+    @QtCore.Slot( int )
+    def change( self, index ) :
+        if index < len( self.keypad_list ) - 1 :
+            self.prev_tab = index
+            self.textedit.show()
+            self.stack.setCurrentIndex( self.prev_tab )
+            self.textedit.setFocus()
+        else :
+            self.textedit.hide()
+            self.stack.setCurrentIndex( index )
+    @QtCore.Slot( str )
+    def q_commit( self, text ) :
+        self.textedit.show()
+        self.stack.setCurrentIndex( self.prev_tab )
+        self.tab.setCurrentIndex( self.prev_tab )
+        self.textedit.setFocus()
+    @QtCore.Slot()
+    def stop( self ) :
+        if self.tab.currentIndex() < len( self.keypad_list ) - 1 :
+            index = self.tab.currentIndex()
+            self.keypad_list[index].stop()
+            self.textedit.stop()
+    @QtCore.Slot( int, int )
+    def slot_command( self, dx, dy ) :
+        if self.tab.currentIndex() < len( self.keypad_list ) - 1 :
+            self.textedit.command( dx, dy )
+    @QtCore.Slot( int, int )
+    def slot_move( self, dx, dy ) :
+        if self.tab.currentIndex() < len( self.keypad_list ) - 1 :
+            self.textedit.move( dx, dy )
     def check_mode( self ) :
         flag = False
         if len( self.textedit.preedit ) > 0 :
             flag = True
-        elif not ( self.keypad_list[0].mode == NumPad.MODE_NORMAL ) :
+        elif not ( self.keypad_list[0].mode == NumPad.MODE_NORMAL ) and not ( self.keypad_list[0].mode == NumPad.MODE_ROLLER ) :
             flag = True
         return flag
     def check_move( self ) :
         flag = True
         if len( self.textedit.preedit ) > 0 :
             flag = False
-        elif not ( self.keypad_list[0].mode == NumPad.MODE_NORMAL ) :
+        elif not ( self.keypad_list[0].mode == NumPad.MODE_NORMAL ) and not ( self.keypad_list[0].mode == NumPad.MODE_ROLLER ) :
             flag = False
         return flag
     def callback_show( self, string ) :
@@ -196,6 +192,11 @@ class InputPad( Control ) :
             self.portrait = False
         else :
             self.portrait = True
+        clip = QtGui.QApplication.clipboard()
+        text = clip.text( clip.Clipboard )
+        self.q.add( text )
+        text = clip.text( clip.Selection )
+        self.q.add( text )
         self.show()
     def resizeEvent( self, event ) :
         #print self.width(), self.height(), self.isVisible()

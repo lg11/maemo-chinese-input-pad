@@ -77,12 +77,20 @@ class KeyPad( QtGui.QWidget ) :
         pass
     def mouseMoveEvent( self, event ) :
         pass
+    def mouseDoubleClickEvent( self, event ) :
+        pass
     def installEventFilter( self, filter ) :
         for key_list in self.key_list :
             for key in key_list :
                 if key :
                     key.installEventFilter( filter )
         QtGui.QWidget.installEventFilter( self, filter )
+    @QtCore.Slot()
+    def stop( self ) :
+        for key_list in self.key_list :
+            for key in key_list :
+                if key :
+                    key.stop()
 
 KEYPAD_MAP = []
 KEYPAD_MAP_NAME = [ "abc", "あ".decode( "utf-8" ), "ア".decode( "utf-8" ), "dic" ]
@@ -104,11 +112,11 @@ KEYPAD_MAP.append( [ \
         "ァィゥェォパピプペポ\nガギグゲゴバビブベボ\nザジズゼゾダヂヅデド\nヵ         \nャュョ\0   ヮ ヰ".decode( "utf-8" ) \
         ] )
 
-KEYPAD_MAP.append( [ \
-        [ "orz", "-_-!", ":]", ":[", "OJL", "\n", "-o-", "\n", "\n", "\n", "\n" ] \
-        , \
-        [ "", "", "", "", "", "", "", "", "", "", "", "" ] \
-        ] )
+#KEYPAD_MAP.append( [ \
+        #[ "orz", "-_-!", ":]", ":[", "OJL", "\n", "-o-", "\n", "\n", "\n", "\n" ] \
+        #, \
+        #[ "", "", "", "", "", "", "", "", "", "", "", "" ] \
+        #] )
 
 """
 あいうえお まみむめも

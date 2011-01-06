@@ -20,13 +20,14 @@ class Key( QtGui.QPushButton ) :
         self.setDown( True )
         self.timer.start( self.longpress_interval )
     def mouseReleaseEvent( self, event ) :
-        self.setDown( False )
         if self.timer.isActive() :
+            self.setDown( False )
             self.timer.stop()
             self.clicked.emit( self.keycode )
     @QtCore.Slot()
     def timeout( self ) :
         self.timer.stop()
+        self.setDown( False )
         self.longpressed.emit( self.keycode )
     @QtCore.Slot()
     def stop( self ) :

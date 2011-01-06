@@ -54,6 +54,11 @@ class TextEdit( QtGui.QTextEdit ) :
         if len( text ) > 0 :
             self.__insert_preedit( text )
     @QtCore.Slot( str )
+    def set( self, c ) :
+        self.setPlainText( c )
+        self.moveCursor( QtGui.QTextCursor.End )
+        self.ensureCursorVisible()
+    @QtCore.Slot( str )
     def commit( self, c ) :
         self.textCursor().insertText( c, self.normal_format )
         self.ensureCursorVisible()

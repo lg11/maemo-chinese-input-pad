@@ -11,6 +11,60 @@ QtCore.Slot = QtCore.pyqtSlot
 from widget import Key
 from backend import Backend
 
+class CharRoller( QtCore.QObject ) :
+    ROLLER = [ "abcABC", "defDEF", "ghiGHI", "jklJKL", "mnoMNO", "pqrsPQRS" ,"tuvTUV", "wxyzWXYZ" ]
+    timeout_interval = 900
+    commit = QtCore.Signal( str )
+    commit_preedit = QtCore.Signal( str )
+    #timeout = QtCore.Signal()
+    def __init__( self ) :
+        QtCore.QObject.__init__( self )
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect( self.slot_timeout )
+        self.roller = -1
+        self.code = -1
+    @QtCore.Slot()
+    def slot_timeout( self ) :
+        self.timer.stop()
+        c = self.ROLLER[self.code][self.roller]
+        self.code = -1
+        self.roller = -1
+        self.commit.emit( c )
+        self.commit_preedit.emit( "" )
+        #self.timeout.emit()
+    def cancel( self ) :
+        self.timer.stop()
+        self.code = -1
+        self.roller = -1
+        self.commit_preedit.emit( "" )
+    def stop( self ) :
+        if self.code >= 0 :
+            c = self.ROLLER[self.code][self.roller]
+            self.code = -1
+            self.roller = -1
+            self.commit.emit( c )
+        self.cancel()
+    def roll( self, code ) :
+        self.timer.stop()
+        if code == self.code :
+            if self.roller < len( self.ROLLER[code] ) - 1 :
+                self.roller = self.roller + 1
+            else :
+                self.roller = 0
+            self.commit_preedit.emit( self.ROLLER[self.code][self.roller] )
+            self.timer.start( self.timeout_interval )
+        else :
+            if self.code >= 0 :
+                self.commit.emit( self.ROLLER[self.code][self.roller] )
+            self.code = code
+            self.roller = 0
+            self.commit_preedit.emit( self.ROLLER[self.code][self.roller] )
+            self.timer.start( self.timeout_interval )
+    def get( self ) :
+        c = ""
+        if self.code >= 0 :
+            c = self.ROLLER[self.code][self.roller]
+        return c
 
 class NumPad( QtGui.QWidget ) :
     commit = QtCore.Signal( str )
@@ -31,6 +85,7 @@ class NumPad( QtGui.QWidget ) :
     MODE_SELECT = 1
     MODE_FILTER = 2
     MODE_PUNC = 3
+    MODE_ROLLER = 4
 
     FONT_NORMAL = QtGui.QFont()
     FONT_UNDERLINE = QtGui.QFont()
@@ -41,6 +96,8 @@ class NumPad( QtGui.QWidget ) :
     FONT_LAGER.setPointSize( FONT_LAGER.pointSize() + 17 )
     FONT_LAGER.setBold( True )
     KEYCODE_BACKSPACE = 21
+    KEYCODE_MODE = 10
+    KEYCODE_NAVIGATE = 11
     def __init__( self, parent = None ) :
         QtGui.QWidget.__init__( self, parent )
 
@@ -84,6 +141,9 @@ class NumPad( QtGui.QWidget ) :
         self.pinyin_index = 0
         self.punc_index = 0
         self.update_stamp = []
+        self.roller = CharRoller()
+        self.roller.commit.connect( self.commit )
+        self.roller.commit_preedit.connect( self.commit_preedit )
         for i in range( 12 ) :
             self.update_stamp.append( False )
         self.__remap()
@@ -156,11 +216,14 @@ class NumPad( QtGui.QWidget ) :
                 self.key_label_list[index].setText( punc )
                 self.update_stamp[index] = True
                 index = index + 1
+        elif self.mode == self.MODE_ROLLER :
+            pass
         for i in range( 12 ) :
             if not self.update_stamp[i] :
                 self.key_label_list[i].setText( self.KEY_TEXT[i] )
     def __reset_mode_setting( self ) :
-        pass
+        self.key_list[self.KEYCODE_NAVIGATE].setDown( False )
+        self.key_list[self.KEYCODE_MODE].setDown( False )
     def set_mode( self, mode ) :
         self.__reset_mode_setting()
         self.mode = mode
@@ -173,6 +236,8 @@ class NumPad( QtGui.QWidget ) :
             pass
         elif mode == self.MODE_PUNC :
             self.punc_index = 0
+        elif mode == self.MODE_ROLLER :
+            self.key_list[self.KEYCODE_MODE].setDown( True )
     @QtCore.Slot( int )
     def slot_key_click( self, code ) :
         if self.mode == self.MODE_NORMAL :
@@ -192,6 +257,11 @@ class NumPad( QtGui.QWidget ) :
                 else :
                     self.set_mode( self.MODE_PUNC )
                     self.context_update()
+            elif code == self.KEYCODE_MODE :
+                if len( self.backend.code() ) > 0 :
+                    pass
+                else :
+                    self.set_mode( self.MODE_ROLLER )
         elif self.mode == self.MODE_SELECT :
             if code >= 1 and code <= 6 :
                 self.backend.select( code - 1 )
@@ -261,6 +331,22 @@ class NumPad( QtGui.QWidget ) :
                     self.set_mode( self.MODE_NORMAL )
                     self.punc_index = 0
                 self.context_update()
+        elif self.mode == self.MODE_ROLLER :
+            if code >= 2 and code <= 9 :
+                self.roller.roll( code - 2 )
+                #self.context_update()
+            elif code == self.KEYCODE_BACKSPACE :
+                if self.roller.code > 0 :
+                    self.roller.cancel()
+                #self.context_update()
+            elif code == 0 :
+                if self.roller.code > 0 :
+                    self.roller.stop()
+            elif code == self.KEYCODE_MODE :
+                if self.roller.code > 0 :
+                    self.roller.stop()
+                self.set_mode( self.MODE_NORMAL )
+                #self.context_update()
     @QtCore.Slot( int )
     def slot_key_longpress( self, code ) :
         if self.mode == self.MODE_NORMAL :
@@ -269,9 +355,16 @@ class NumPad( QtGui.QWidget ) :
                     pass
                 else :
                     self.commit.emit( str( code ) )
+        elif self.mode == self.MODE_ROLLER :
+            if code >= 0 and code <= 9 :
+                if self.roller.code > 0 :
+                    self.roller.stop()
+                self.commit.emit( str( code ) )
     def mousePressEvent( self, event ) :
         pass
     def mouseReleaseEvent( self, event ) :
+        pass
+    def mouseDoubleClickEvent( self, event ) :
         pass
     def mouseMoveEvent( self, event ) :
         pass
@@ -279,6 +372,12 @@ class NumPad( QtGui.QWidget ) :
         for key in self.key_list :
             key.installEventFilter( filter )
         QtGui.QWidget.installEventFilter( self, filter )
+    @QtCore.Slot()
+    def stop( self ) :
+        for key in self.key_list :
+            key.stop()
+        if self.mode == self.MODE_ROLLER :
+            self.key_list[self.KEYCODE_MODE].setDown( True )
 
 if __name__ == "__main__" :
     import sys

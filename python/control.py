@@ -23,7 +23,7 @@ class Control( QtGui.QWidget ) :
         self.command_timer.timeout.connect( self.command_timeout )
         self.time = QtCore.QTime()
         self.time.start()
-        self.stack = []
+        self.track = []
     def eventFilter( self, target, event ) :
         if event.type() == QtCore.QEvent.MouseButtonPress :
             self.mousePressEvent( event )
@@ -38,12 +38,12 @@ class Control( QtGui.QWidget ) :
         #print "press"
         self.flag = False
         self.origin = event.globalPos()
-        self.timer.start( 350 )
+        self.timer.start( 320 )
         self.check_timer.start( 120 )
         self.command_timer.start( 250 )
         self.time.restart()
-        self.stack = []
-        #self.stack.append( ( event.pos(), self.time.elapsed() ) )
+        self.track = []
+        #self.track.append( ( event.pos(), self.time.elapsed() ) )
     def mouseReleaseEvent( self, event ) :
         #print "release"
         self.check_timer.stop()
@@ -55,31 +55,31 @@ class Control( QtGui.QWidget ) :
                 dx = pos.x() - self.origin.x()
                 dy = pos.y() - self.origin.y()
                 d = dx * dx + dy * dy
-                if d > 1024 * 3.0 :
+                if d > 1024 * 4.0 :
                     self.take.emit()
                     self.command.emit( dx, dy )
         else :
             if self.check() :
-                if len( self.stack ) > 0 :
+                if len( self.track ) > 0 :
                     pos = event.globalPos()
                     current_time = self.time.elapsed()
-                    self.stack.append( ( pos, current_time ) )
-                    i = len( self.stack ) - 1
+                    self.track.append( ( pos, current_time ) )
+                    i = len( self.track ) - 1
                     flag = False
                     while i > 0 and not flag:
-                        old_time = self.stack[i][1]
-                        #print i, time - old_time, self.stack[i]
-                        if current_time - old_time > 100 :
+                        old_time = self.track[i][1]
+                        #print i, time - old_time, self.track[i]
+                        if current_time - old_time > 90 :
                             flag = True
                         else :
                             i = i - 1
                     #print i
-                    pos = self.stack[i][0]
-                    time = self.stack[i][1]
+                    pos = self.track[i][0]
+                    time = self.track[i][1]
                     if flag :
-                        next_pos = self.stack[i+1][0]
-                        next_time = self.stack[i+1][1]
-                        r = float( current_time - 100 - time ) / float( next_time - time )
+                        next_pos = self.track[i+1][0]
+                        next_time = self.track[i+1][1]
+                        r = float( current_time - 90 - time ) / float( next_time - time )
                         v = next_pos - pos
                         #print "====="
                         #print r, current_time, next_time, time
@@ -101,7 +101,7 @@ class Control( QtGui.QWidget ) :
                 dx = pos.x() - self.start.x()
                 dy = pos.y() - self.start.y()
                 self.move.emit( dx, dy )
-                self.stack.append( ( pos, self.time.elapsed() ) )
+                self.track.append( ( pos, self.time.elapsed() ) )
             else :
                 if self.timer.isActive() :
                     dx = pos.x() - self.origin.x()
@@ -113,16 +113,19 @@ class Control( QtGui.QWidget ) :
                             #print "move", dx, dy
                             self.take.emit()
                             self.flag = True
-                            self.stack.append( ( pos, self.time.elapsed() ) )
+                            self.track.append( ( pos, self.time.elapsed() ) )
                     elif d > 1024 * 2.5 :
                         self.start = self.origin
                         #print "move", dx, dy
                         self.take.emit()
                         self.flag = True
-                        self.stack.append( ( pos, self.time.elapsed() ) )
+                        self.track.append( ( pos, self.time.elapsed() ) )
+    @QtCore.Slot()
     def timeout( self ) :
         self.timer.stop()
+    @QtCore.Slot()
     def check_timeout( self ) :
         self.check_timer.stop()
+    @QtCore.Slot()
     def command_timeout( self ) :
         self.command_timer.stop()
