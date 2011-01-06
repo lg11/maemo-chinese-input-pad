@@ -61,17 +61,32 @@ class Control( QtGui.QWidget ) :
         else :
             if self.check() :
                 if len( self.stack ) > 0 :
+                    pos = event.globalPos()
+                    current_time = self.time.elapsed()
+                    self.stack.append( ( pos, current_time ) )
                     i = len( self.stack ) - 1
-                    time = self.time.elapsed()
-                    while i > 0 :
+                    flag = False
+                    while i > 0 and not flag:
                         old_time = self.stack[i][1]
                         #print i, time - old_time, self.stack[i]
-                        if time - old_time > 100 :
-                            break
+                        if current_time - old_time > 100 :
+                            flag = True
                         else :
                             i = i - 1
                     #print i
                     pos = self.stack[i][0]
+                    time = self.stack[i][1]
+                    if flag :
+                        next_pos = self.stack[i+1][0]
+                        next_time = self.stack[i+1][1]
+                        r = float( current_time - 100 - time ) / float( next_time - time )
+                        v = next_pos - pos
+                        #print "====="
+                        #print r, current_time, next_time, time
+                        #print v
+                        v = v * r
+                        #print v
+                        pos = pos + v
                     dx = pos.x() - self.start.x()
                     dy = pos.y() - self.start.y()
                     self.move.emit( dx, dy )
