@@ -25,8 +25,6 @@ class Post( QtGui.QPushButton ) :
         self.label = QtGui.QLabel( self )
         self.stick = QtGui.QLabel( self )
 
-        self.focus = None
-
         layout = QtGui.QHBoxLayout()
         layout.setSpacing( 3 )
         layout.setContentsMargins( 8, 0, 15, 0 )
@@ -38,28 +36,26 @@ class Post( QtGui.QPushButton ) :
         self.stick.setText( u"◇" )
         self.stick.setPalette( self.PALETTE )
 
-        self.text = self.label.text
         self.start_pos = QtCore.QPoint( 0, 0 )
         self.flag = False
         self.id = id
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect( self.timeout )
         self.longpress_interval = self.DEFAULT_LONGPRESS_INTERVAL
-    def setText( self, text ) :
-        self.label.setText( text )
+        self.setText = self.label.setText
     def mousePressEvent( self, event ) :
         self.setDown( True )
         self.timer.start( self.longpress_interval )
         self.start_pos = event.pos()
     def set( self, flag ) :
         if flag :
-            self.sticked.emit( self.id )
             self.stick.setText( u"◆" )
             self.flag = True
+            self.sticked.emit( self.id )
         else :
             self.stick.setText( u"◇" )
-            self.unsticked.emit( self.id )
             self.flag = False
+            self.unsticked.emit( self.id )
     def mouseReleaseEvent( self, event ) :
         if self.timer.isActive() :
             self.setDown( False )
@@ -74,8 +70,6 @@ class Post( QtGui.QPushButton ) :
         self.timer.stop()
         self.setDown( False )
         self.longpressed.emit( self.id )
-    def set_id( self, id ) :
-        self.id = id
     @QtCore.Slot()
     def stop( self ) :
         self.timer.stop()
@@ -84,47 +78,92 @@ class Post( QtGui.QPushButton ) :
 class PostPad( QtGui.QWidget ) :
     set = QtCore.Signal( str )
     commit = QtCore.Signal( str )
+    MAX = 16
     def __init__( self, parent = None ) :
         QtGui.QWidget.__init__( self, parent )
+        self.record = []
         self.post_list = []
-        #self.
-        self.sticked_count = 0
-        #self.lay
+        for i in range( self.MAX ) :
+            post = Post( i , self ) 
+            post.sticked.connect( self.stick )
+            post.unsticked.connect( self.unstick )
+            post.hide()
+            self.post_list.append( post )
+    def __access_record( self ) :
+        #把sticked的记录上移一位
+        index = 0
+        while index < len( self.record ) :
+            if self.record[index][1] :
+                prev_index = index - 1
+                tail_index = index
+                while tail_index < len( self.record ) :
+                    if self.record[index][1] :
+                        tail_index = tail_index + 1
+                    else :
+                        break
+                if prev_index > 0 :
+                    record = self.record.pop( prev_index )
+                    self.record.insert( tail_index, record )
+                index = tail_index
+            index = index + 1
+    @QtCore.Slot( int )
+    def stick( self, id ) :
+        self.record[id][1] = True
+        #print self.record
+    @QtCore.Slot( int )
+    def unstick( self, id ) :
+        self.record[id][1] = False
+        #print self.record
+    def __add( self, text ) :
+        if len( self.record ) < self.MAX :
+            pass
+        else :
+            index = len( self.record ) - 1
+            while index >= 0 :
+                if self.record[index][1] :
+                    index = index - 1
+                else :
+                    break
+            if index >= 0 :
+                self.record.pop( index )
+        if len( self.record ) < self.MAX :
+            index = 0
+            while index < len( self.record ) :
+                if self.record[index][1] :
+                    index = index + 1
+                else :
+                    break
+            self.record.insert( index, [ text, False ] )
+            self.__access_record()
     @QtCore.Slot( str )
     def add( self, text ) :
         if len( text ) > 0 :
             if not self.check( text ) :
-                index = len( self.post_list )
-                post = Post( index, self )
-                post.setText( text )
-                post.clicked.connect( self.__commit )
-                post.longpressed.connect( self.__set )
-                post.setFocusProxy( self.focus )
-                self.post_list.append( post )
+                self.__add( text )
                 self.__remap()
     def setFocusProxy( self, proxy ) :
         for post in self.post_list :
             post.setFocusProxy( proxy )
-        self.focus = proxy
         QtGui.QWidget.setFocusProxy( self, proxy )
     def __remap( self ) :
         width = self.width()
-        height = self.height ()
-        y = 0
-        index = len( self.post_list ) - 1
-        while index >= 0 :
+        index  = 0
+        while index < self.MAX :
             post = self.post_list[index]
-            post.show()
-            post.resize( width, post.HEIGHT )
-            post.move( 0, y )
-            y = y + post.HEIGHT
-            index = index - 1
+            if index < len( self.record ) :
+                post.show()
+                post.setText( self.record[index][0] )
+                post.resize( width, post.HEIGHT )
+                post.move( 0, index * post.HEIGHT )
+            else :
+                post.hide()
+            index = index + 1
     def resizeEvent( self, event ) :
         self.__remap()
     def check( self, text ) :
         flag = False
-        for post in self.post_list :
-            if post.text() == text :
+        for post in self.record :
+            if post[0] == text :
                 flag = True
                 break
         return flag
@@ -134,11 +173,11 @@ class PostPad( QtGui.QWidget ) :
             post.stop()
     @QtCore.Slot( int )
     def __commit( self, id ) :
-        text = self.post_list[id].text()
+        text = self.record[id][0]
         self.commit.emit( text )
     @QtCore.Slot( int )
     def __set( self, id ) :
-        text = self.post_list[id].text()
+        text = self.record[id][0]
         self.set.emit( text )
 
 
@@ -147,14 +186,26 @@ if __name__ == "__main__" :
     app = QtGui.QApplication( sys.argv )
 
     pad = PostPad()
+
     cb = app.clipboard()
     text = cb.text( cb.Clipboard )
-    if len( text ) > 0 :
-        pad.add( text )
+    pad.add( text )
     text = cb.text( cb.Selection )
-    if len( text ) > 0 :
-        pad.add( text )
-    pad.add( "tststtttydhdydhgdhndhyudhyudhyudhudhydbhyhbhyhghybghyhghyhhyhhyhhyuhyuhujnhju" )
-    pad.add( "tstst" )
+    pad.add( text )
+    pad.add( "1" )
+    pad.add( "2" )
+    post = pad.post_list[1]
+    post.set( True )
+    pad.add( "3" )
+    pad.add( "4" )
+    pad.add( "5" )
+    pad.add( "6" )
+    pad.add( "7" )
+    pad.add( "8" )
+    pad.add( "9" )
+    pad.add( "10" )
+    pad.add( "11" )
+    pad.add( "12" )
+
     pad.show()
     sys.exit( app.exec_() )
