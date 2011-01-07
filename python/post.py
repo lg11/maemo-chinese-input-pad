@@ -87,6 +87,8 @@ class PostPad( QtGui.QWidget ) :
             post = Post( i , self ) 
             post.sticked.connect( self.stick )
             post.unsticked.connect( self.unstick )
+            post.clicked.connect( self.__commit )
+            post.longpressed.connect( self.__set )
             post.hide()
             self.post_list.append( post )
     def __access_record( self ) :
