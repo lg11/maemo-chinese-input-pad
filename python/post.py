@@ -97,15 +97,15 @@ class PostPad( QtGui.QWidget ) :
         while index < len( self.record ) :
             if self.record[index][1] :
                 prev_index = index - 1
-                tail_index = index
+                tail_index = index + 1
                 while tail_index < len( self.record ) :
-                    if self.record[index][1] :
+                    if self.record[tail_index][1] :
                         tail_index = tail_index + 1
                     else :
                         break
                 if prev_index > 0 :
                     record = self.record.pop( prev_index )
-                    self.record.insert( tail_index, record )
+                    self.record.insert( tail_index - 1, record )
                 index = tail_index
             index = index + 1
     @QtCore.Slot( int )
@@ -129,13 +129,7 @@ class PostPad( QtGui.QWidget ) :
             if index >= 0 :
                 self.record.pop( index )
         if len( self.record ) < self.MAX :
-            index = 0
-            while index < len( self.record ) :
-                if self.record[index][1] :
-                    index = index + 1
-                else :
-                    break
-            self.record.insert( index, [ text, False ] )
+            self.record.insert( 0, [ text, False ] )
             self.__access_record()
     @QtCore.Slot( str )
     def add( self, text ) :
@@ -200,6 +194,8 @@ if __name__ == "__main__" :
     post.set( True )
     pad.add( "3" )
     pad.add( "4" )
+    post = pad.post_list[3]
+    post.set( True )
     pad.add( "5" )
     pad.add( "6" )
     pad.add( "7" )
@@ -208,6 +204,12 @@ if __name__ == "__main__" :
     pad.add( "10" )
     pad.add( "11" )
     pad.add( "12" )
+    pad.add( "13" )
+    pad.add( "14" )
+    pad.add( "15" )
+    pad.add( "16" )
+    pad.add( "17" )
+    pad.add( "18" )
 
     pad.show()
     sys.exit( app.exec_() )
