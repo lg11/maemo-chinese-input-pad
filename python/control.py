@@ -107,14 +107,14 @@ class Control( QtGui.QWidget ) :
                     dx = pos.x() - self.origin.x()
                     dy = pos.y() - self.origin.y()
                     d = dx * dx + dy * dy
-                    if d > 1024 * 1.0 :
+                    if d > 1024 * 1.5 :
                         if not self.check_timer.isActive() :
                             self.start = ( pos + self.origin ) / 2
                             #print "move", dx, dy
                             self.take.emit()
                             self.flag = True
                             self.track.append( ( pos, self.time.elapsed() ) )
-                    elif d > 1024 * 2.5 :
+                    elif d > 1024 * 3.0 :
                         self.start = self.origin
                         #print "move", dx, dy
                         self.take.emit()
